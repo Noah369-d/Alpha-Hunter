@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全息共振 V10.0 - 双轨分屏版</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <style>
+        [v-cloak] { display: none !important; }
+        
+        /* --- 核心主题变量 --- */
+        :root {
+            --bg-root: #101318; --bg-panel: #1e222d; --border-color: #2a2e39;
+            --text-main: #d1d4dc; --text-sub: #787b86; --hover-bg: #2a2e39;
+            --input-bg: #000000;
+            --accent-blue: #2962ff; --accent-purple: #b481ff;
+            --tv-green: #089981; --tv-red: #f23645; --tv-yellow: #fcc02e;
+        }
+        [data-theme="light"] {
+            --bg-root: #f0f3fa; --bg-panel: #ffffff; --border-color: #e0e3eb;
+            --text-main: #131722; --text-sub: #5d606b; --bg-hover: #f1f3f6;
+            --input-bg: #ffffff;
+        }
+
+        body { background-color: var(--bg-root); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; transition: background 0.3s; }
+        .card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 4px; }
+        
+        /* 交互组件 */
+        .btn { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-blue { background: var(--accent-blue); color: white; } .btn-blue:hover { opacity: 0.9; }
+        .btn-purple { background: var(--accent-purple); color: white; } .btn-purple:hover { opacity: 0.9; }
+        .btn-ghost { background: transparent; color: var(--text-sub); } .btn-ghost:hover { background: var(--hover-bg); color: var(--text-main); }
+        .btn-active { background: var(--hover-bg); color: var(--accent-blue); border-color: var(--accent-blue); }
+        .btn-star { color: #5d606b; font-size: 14px; padding: 0 2px; cursor: pointer; } .btn-star.active { color: #fcc02e; }
+
+        .input-dark { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 2px 6px; font-size: 12px; border-radius: 3px; outline: none; width: 100%; transition: 0.2s; }
+        .input-dark:focus { border-color: var(--accent-blue); }
+
+        /* 颜色定义 */
+        .text-up { color: var(--tv-green); } .text-down { color: var(--tv-red); } .text-warn { color: var(--tv-yellow); }
+        .text-blue-signal { color: var(--accent-blue); } .text-pivot { color: #ff9800; }
+        .text-super { color: #ff00ff; text-shadow: 0 0 5px rgba(255, 0, 255, 0.4); }
+        .text-resonance { color: var(--accent-purple); font-weight: 800; }
+        
+        .signal-tag { padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: bold; margin-right: 3px; display: inline-block; border: 1px solid transparent; }
+        .bg-buy { background: rgba(8, 153, 129, 0.15); color: var(--tv-green); }
+        .bg-acc { background: rgba(252, 192, 46, 0.15); color: var(--tv-yellow); }
+        .bg-sell { background: rgba(242, 54, 69, 0.15); color: var(--tv-red); }
+        .bg-pivot { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
+        .bg-res { background: rgba(180, 129, 255, 0.15); color: var(--accent-purple); }
+        
+        .trend-pill { font-size: 9px; padding: 1px 4px; border-radius: 2px; min-width: 14px; text-align: center; }
+        .trend-up { background: var(--tv-green); color: #fff; font-weight: bold; }
+        .trend-bear { background: #363a45; color: #9ca3af; } 
+
+        /* 列表 Grid 布局 */
+        .stock-grid-header, .stock-grid-row {
+            display: grid;
+            grid-template-columns: 30px 75px 65px 40px 1fr;
+            gap: 4px;
+            align-items: center;
+            padding: 0 8px;
+        }
+        .stock-grid-header { height: 28px; border-bottom: 1px solid var(--border-color); font-size: 10px; color: var(--text-sub); background-color: var(--bg-root); }
+        .stock-grid-row { height: 42px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.1s; }
+        .stock-grid-row:hover { background-color: var(--bg-hover); }
+        .stock-grid-row.active { background-color: var(--bg-hover); border-left: 2px solid var(--accent-blue); padding-left: 6px; }
+
+        /* 市场筛选按钮 */
+        .market-btn { padding: 1px 5px; font-size: 9px; border-radius: 3px; cursor: pointer; color: var(--text-sub); border: 1px solid transparent; transition: 0.2s; }
+        .market-btn.active { background-color: var(--bg-hover); color: var(--text-main); border-color: var(--border-color); font-weight: bold; }
+        .market-btn:hover { color: var(--text-main); }
+        
+        .market-badge { font-size: 8px; padding: 0 2px; border-radius: 2px; margin-right: 3px; font-weight: bold; color: #fff; min-width: 14px; text-align: center; height: 12px; line-height: 12px; display: inline-block; }
+        .mk-us { background-color: #2962ff; } .mk-hk { background-color: #00bcd4; } .mk-cn { background-color: #f23645; }
+
+        /* 工具栏 */
+        .drawing-tools { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); z-index: 30; display: flex; flex-direction: column; gap: 6px; background: var(--bg-panel); padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+        .tool-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-sub); cursor: pointer; transition: all 0.2s; font-size: 16px; }
+        .tool-btn:hover { background: var(--bg-hover); color: var(--text-main); } .tool-btn.active { background: var(--accent-blue); color: #fff; }
+        .tool-divider { height: 1px; background: var(--border-color); margin: 2px 4px; }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #363a45; border-radius: 2px; }
+        
+        .news-link { display: block; padding: 6px 0; border-bottom: 1px solid var(--border-color); text-decoration: none; transition: 0.2s; }
+        .news-link:hover .news-title { color: var(--accent-blue); }
+        .news-title { font-size: 11px; color: var(--text-main); line-height: 1.4; display: block; margin-bottom: 2px; }
+        .news-meta { font-size: 9px; color: var(--text-sub); }
+        .trade-label { font-size: 9px; color: var(--text-sub); margin-bottom: 1px; display: block; text-transform: uppercase; }
+        .chart-legend { position: absolute; top: 10px; left: 10px; z-index: 20; background: rgba(19, 23, 34, 0.7); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 4px; border: 1px solid #2a2e39; pointer-events: none; user-select: none; }
+        [data-theme="light"] .chart-legend { background: rgba(255, 255, 255, 0.7); border-color: #dfe2e5; color: #000; }
+
+        .sortable { cursor: pointer; user-select: none; transition: color 0.2s; } .sortable:hover { color: var(--text-main); }
+        .sort-icon { display: inline-block; width: 8px; text-align: center; }
+
+        .sentiment-btn { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--text-sub); display: inline-block; cursor: pointer; margin-right: 4px; }
+        .sent-bull { background-color: var(--tv-green); border-color: var(--tv-green); } .sent-bear { background-color: var(--tv-red); border-color: var(--tv-red); } .sent-flat { background-color: #fcc02e; border-color: #fcc02e; }
+        
+        .asset-row { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr 1fr; gap: 4px; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border-color); color: var(--text-main); align-items: center; }
+        .asset-header { font-weight: bold; color: var(--text-sub); border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+        .tab-btn { flex: 1; text-align: center; padding: 4px; font-size: 11px; cursor: pointer; color: var(--text-sub); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); background: var(--bg-hover); }
+        
+        @keyframes flash-red { 0%,100% { background: transparent; } 50% { background: rgba(242, 54, 69, 0.2); } }
+        @keyframes flash-green { 0%,100% { background: transparent; } 50% { background: rgba(8, 153, 129, 0.2); } }
+        .alert-sl { animation: flash-red 1s infinite; border: 1px solid var(--tv-red) !important; }
+        .alert-tp { animation: flash-green 1s infinite; border: 1px solid var(--tv-green) !important; }
+
+        .strategy-select {
+            background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-blue); font-weight: bold;
+            font-size: 12px; padding: 2px 6px; border-radius: 4px; outline: none; cursor: pointer;
+        }
+
+        .trend-box { display: flex; gap: 2px; justify-content: center; }
+        .t-pill { width: 16px; height: 16px; border-radius: 2px; font-size: 9px; font-weight: bold; display: flex; align-items: center; justify-content: center; color: #fff; cursor: default; }
+        .tp-up { background-color: var(--tv-green); }
+        .tp-down { background-color: var(--tv-grey); color: #9ca3af; }
+        
+        .log-header { font-size: 11px; font-weight: bold; color: var(--text-sub); display: flex; justify-content: space-between; padding-bottom: 4px; border-bottom: 1px solid var(--border-color); margin-bottom: 6px; }
+        .rail-status { background: #151921; border-radius: 4px; padding: 6px; border: 1px solid var(--border-color); }
+        .sop-row { display: flex; align-items: start; gap: 8px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed var(--border-color); }
+        .sop-row:last-child { border-bottom: none; }
+        .sop-icon { width: 40px; text-align: center; font-size: 10px; font-weight: bold; flex-shrink: 0; padding-top: 2px; }
+        .sop-desc { font-size: 10px; color: var(--text-sub); line-height: 1.4; }
+        .sop-desc strong { color: var(--text-main); }
+    </style>
+</head>
+<body :data-theme="isDark ? 'dark' : 'light'">
+
+<div id="app" v-cloak class="h-screen w-screen flex flex-col p-2 box-border select-none">
+    <!-- 顶部工具栏 -->
+    <div class="flex justify-between items-center mb-2 px-1 flex-none">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                HoloResonance <span class="text-xs text-[var(--text-sub)] font-normal">V10.0 DualPane</span>
+            </h1>
+            
+            <div class="flex items-center gap-2 border-l border-[var(--border-color)] pl-3">
+                <span class="text-[10px] text-[var(--text-sub)]">STRAT:</span>
+                <select v-model="currentStrategy" @change="onStrategyChange" class="strategy-select">
+                    <option value="Holo">机构猎手 (Main)</option>
+                    <option value="CRT">CRT (Trap)</option>
+                    <option value="Envelope">外包线 (Mean Rev)</option>
+                    <option value="T3">T3+MACD</option>
+                </select>
+            </div>
+
+            <div class="flex bg-[var(--bg-panel)] rounded p-1 gap-1 border border-[var(--border-color)]">
+                <button v-for="p in ['15m','1h','4h','1d','1wk']" @click="changePeriod(p)" 
+                    :class="['btn', 'px-2', 'py-1', 'text-[10px]', period===p?'btn-active':'btn-ghost']">{{ p.toUpperCase() }}</button>
+            </div>
+            
+            <div class="flex gap-2 text-xs ml-4 items-center">
+                <button @click="toggleTheme" class="btn btn-ghost" title="日/夜模式">{{ isDark ? '☀' : '🌙' }}</button>
+                <button @click="openComparisonWindow" class="btn btn-purple gap-1 shadow-lg shadow-purple-500/20 px-2 py-1">📊 对比</button>
+                <span class="text-[var(--border-color)]">|</span>
+                <button @click="loadWatchlist" class="text-yellow-400 font-bold border border-yellow-600/30 px-2 py-1 rounded hover:bg-yellow-500/10 transition">★ 自选</button>
+                <button @click="loadList('SPY')" class="text-blue-400 hover:text-blue-500 transition cursor-pointer">🇺🇸 SPY</button>
+                <button @click="loadList('HSI')" class="text-teal-400 hover:text-teal-500 transition cursor-pointer">🇭🇰 恒指</button>
+                <button @click="loadList('CSI')" class="text-red-400 hover:text-red-500 transition cursor-pointer">🇨🇳 沪深</button>
+            </div>
+        </div>
+        
+        <div class="flex gap-2 items-center">
+            <input type="file" ref="fileInput" @change="handleFileUpload" class="hidden" accept=".txt,.csv">
+            <button @click="$refs.fileInput.click()" class="btn btn-ghost px-2 h-7" title="导入股票代码">📂</button>
+            <span v-if="autoRefreshCount > 0" class="text-[9px] text-[var(--text-sub)] font-mono w-8 text-right">{{ Math.floor(autoRefreshCount/60) }}m</span>
+            <input v-model="inputSymbols" @keyup.enter="runScanner(false)" type="text" class="input-dark w-40" placeholder="代码 (如: 700)...">
+            <button @click="runScanner(false)" :disabled="loading" class="btn btn-blue w-20 font-mono text-xs">
+                {{ loading ? progress : '扫描' }}
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-1 gap-2 overflow-hidden">
+        <!-- 左侧：股票列表 -->
+        <div class="w-80 flex flex-col gap-2 flex-none">
+            <div class="card flex-1 overflow-hidden flex flex-col">
+                <div class="p-2 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-panel)] flex-none h-9">
+                    <span class="font-bold text-xs text-[var(--text-sub)]">列表 ({{ sortedStocks.length }})</span>
+                    <div class="flex gap-1">
+                        <span @click="marketFilter='ALL'" :class="['market-btn', marketFilter==='ALL'?'active':'']">ALL</span>
+                        <span @click="marketFilter='US'" :class="['market-btn', marketFilter==='US'?'active':'']">US</span>
+                        <span @click="marketFilter='HK'" :class="['market-btn', marketFilter==='HK'?'active':'']">HK</span>
+                        <span @click="marketFilter='CN'" :class="['market-btn', marketFilter==='CN'?'active':'']">CN</span>
+                    </div>
+                </div>
+                
+                <div class="stock-grid-header flex text-[10px] text-[var(--text-sub)] px-2 py-1 bg-[var(--bg-root)] border-b border-[var(--border-color)]">
+                    <div class="w-10 text-center">研判</div>
+                    <div class="w-18 sortable" @click="sortBy('symbol')">代码/名称 <span class="text-[8px]">{{getSortIcon('symbol')}}</span></div>
+                    <div class="w-14 text-right sortable" @click="sortBy('change')">现价 <span class="text-[8px]">{{getSortIcon('change')}}</span></div>
+                    <div class="w-14 text-center">趋势</div>
+                    <div class="flex-1 text-right">信号</div>
+                </div>
+
+                <div class="overflow-y-auto flex-1 relative">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <tbody>
+                            <tr v-for="stock in sortedStocks" :key="stock.symbol" @click="selectStock(stock)"
+                                :class="['stock-grid-row', currentStock?.symbol === stock.symbol ? 'active' : '']">
+                                <td class="p-2 w-10 text-center">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <span @click.stop="toggleWatchlist(stock.symbol)" :class="['btn-star', isWatchlisted(stock.symbol) ? 'active' : '']">★</span>
+                                        <span @click.stop="toggleSentiment(stock.symbol)" :class="['sentiment-btn', getSentimentClass(stock.symbol)]"></span>
+                                    </div>
+                                </td>
+                                <td class="p-2 w-18">
+                                    <div class="flex items-center">
+                                        <span :class="['market-badge', getMarketClass(stock.symbol)]">{{ getMarketType(stock.symbol) }}</span>
+                                        <span class="font-bold text-[var(--text-main)]">{{ stock.symbol }}</span>
+                                    </div>
+                                    <div class="text-[9px] text-[var(--text-sub)] truncate w-20" :title="stock.name">{{ stock.name }}</div>
+                                </td>
+                                <td class="p-2 text-right w-14">
+                                    <div :class="stock.change >= 0 ? 'text-up' : 'text-down'">{{ stock.price.toFixed(2) }}</div>
+                                    <div :class="['text-[9px]', stock.change >= 0 ? 'text-up' : 'text-down']">{{ stock.change >= 0 ? '+' : ''}}{{ stock.change.toFixed(2) }}%</div>
+                                </td>
+                                <td class="p-2 text-center w-14">
+                                    <div v-if="currentStrategy==='Holo'" class="flex gap-1 justify-center">
+                                        <span :class="['trend-pill', stock.trendShort==='Bull'?'trend-up':'trend-bear']">S</span>
+                                        <span :class="['trend-pill', stock.trendLong==='Bull'?'trend-up':'trend-bear']">L</span>
+                                    </div>
+                                    <span v-else class="text-[9px] text-[var(--text-sub)]">{{ currentStrategy }}</span>
+                                </td>
+                                <td class="p-2 text-right">
+                                    <span v-if="stock.activeSignal" class="signal-tag" :class="stock.activeSignalColor">{{ stock.activeSignal }}</span>
+                                    <span v-else class="text-[var(--text-sub)]">-</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间：图表 (双屏改造) -->
+        <div class="flex-1 flex flex-col gap-2 min-w-0">
+            <div class="card flex-1 p-1 relative flex flex-col overflow-hidden group bg-[var(--bg-root)]">
+                <div class="drawing-tools opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div @click="setTool('cursor')" :class="['tool-btn', activeTool==='cursor'?'active':'']" title="浏览"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg></div>
+                    <div @click="setTool('hline')" :class="['tool-btn', activeTool==='hline'?'active':'']" title="水平线"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/></svg></div>
+                    <div @click="setTool('trend')" :class="['tool-btn', activeTool==='trend'?'active':'']" title="趋势线"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="21" x2="3" y2="3"/></svg></div>
+                    <div class="tool-divider"></div>
+                    <div @click="clearDrawings" class="tool-btn hover:text-red-500" title="清除绘图"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+                </div>
+                
+                <div id="tv-chart-container" class="w-full h-full cursor-crosshair"></div>
+                
+                <div v-if="currentStock" class="chart-legend">
+                    <div class="flex items-center gap-2 text-xs font-mono text-[var(--text-sub)]">
+                        <span class="text-[var(--text-main)] font-bold text-sm mr-1">{{ currentStock.name }}</span>
+                        <span>[ {{ currentStrategy }} ]</span>
+                        <span>Data: <span class="text-blue-400">{{ currentStock.lastUpdated }}</span></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 底部功能区 -->
+            <div class="card h-52 flex overflow-hidden">
+                <!-- 1. 日志 (深度解盘) -->
+                <div class="flex-1 flex flex-col border-r border-[var(--border-color)] min-w-[200px]">
+                    <div class="px-3 py-2 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-root)]">
+                        <span class="text-xs text-[var(--text-sub)] font-mono">SYSTEM LOG ({{ currentStrategy }})</span>
+                        <span v-if="currentStock" :class="['font-bold text-xs', 'text-blue-signal']">{{ currentStock.logTitle }}</span>
+                    </div>
+                    <div class="flex-1 p-3 overflow-y-auto font-mono text-xs bg-[var(--bg-root)] space-y-2">
+                        <div v-if="currentStock">
+                            <div v-if="alertState.triggered" class="mb-2 p-2 rounded border font-bold animate-pulse bg-red-900/50 border-red-500 text-red-400">⚠️ {{ alertState.message }}</div>
+                            
+                            <!-- 轨道罗盘 -->
+                            <div class="grid grid-cols-2 gap-2 mb-2 p-2 bg-[var(--bg-panel)] rounded border border-[var(--border-color)]">
+                                <div>
+                                    <div class="text-[9px] text-[#2962ff] font-bold">快轨 (BLUE)</div>
+                                    <div :class="currentStock.price > currentStock.indicators.A_SH.slice(-1)[0] ? 'text-up' : (currentStock.price < currentStock.indicators.B_SH.slice(-1)[0] ? 'text-down' : 'text-warn')">
+                                        ➜ {{ currentStock.price > currentStock.indicators.A_SH.slice(-1)[0] ? '站稳上轨' : (currentStock.price < currentStock.indicators.B_SH.slice(-1)[0] ? '跌破下轨' : '震荡整理') }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] text-[#fcc02e] font-bold">慢轨 (GOLD)</div>
+                                    <div :class="currentStock.price > currentStock.indicators.A_LG.slice(-1)[0] ? 'text-up' : (currentStock.price < currentStock.indicators.B_LG.slice(-1)[0] ? 'text-down' : 'text-[var(--text-secondary)]')">
+                                        {{ currentStock.price > currentStock.indicators.A_LG.slice(-1)[0] ? '↑ 长牛趋势' : (currentStock.price < currentStock.indicators.B_LG.slice(-1)[0] ? '↓ 长熊压制' : '→ 趋势不明') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 深度策略逻辑 -->
+                            <div class="pl-2 border-l-2 border-gray-500/30 space-y-2 leading-relaxed text-[11px]">
+                                <div class="text-[var(--text-sub)] mb-1 opacity-70">=== 周期: {{periodName}} SOP指令 ===</div>
+                                <div v-html="currentStock.logContent"></div>
+                            </div>
+                        </div>
+                        <div v-else class="text-[var(--text-sub)] h-full flex items-center justify-center opacity-50">等待指令...</div>
+                    </div>
+                </div>
+
+                <!-- 2. 资讯 -->
+                <div class="flex-1 flex flex-col border-r border-[var(--border-color)] min-w-[180px] bg-[#161a25]">
+                    <div class="px-3 py-2 border-b border-[var(--border-color)] bg-[var(--bg-root)] flex justify-between items-center">
+                        <span class="text-xs text-[var(--text-sub)] font-mono">NEWS FEED</span>
+                        <span v-if="newsLoading" class="text-[9px] text-blue-400 animate-pulse">更新中...</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2 bg-[var(--bg-panel)]">
+                        <div v-if="newsList.length > 0">
+                            <a v-for="(news, idx) in newsList" :key="idx" :href="news.link" target="_blank" class="news-link">
+                                <span class="news-title">{{ news.title }}</span><span class="news-meta">{{ news.time }}</span>
+                            </a>
+                        </div>
+                        <div v-else class="text-center text-[var(--text-sub)] text-xs mt-4">{{ newsLoading ? '正在加载RSS...' : '暂无资讯' }}</div>
+                    </div>
+                </div>
+
+                <!-- 3. SOP (详细化) -->
+                <div class="w-48 bg-[var(--bg-panel)] border-r border-[var(--border-color)] p-2 flex flex-col flex-none overflow-y-auto">
+                    <div class="font-bold text-[9px] text-[var(--text-secondary)] mb-2 border-b border-[var(--border-color)] pb-1">SOP: {{currentStrategy}}</div>
+                    <div class="space-y-2">
+                        <div v-if="currentStrategy==='Holo'">
+                             <div class="sop-row"><div class="sop-icon text-resonance">共振</div><div class="sop-desc"><strong>现象:</strong> W底结构+资金共振<br><strong>操作:</strong> 确认支撑，重仓介入</div></div>
+                             <div class="sop-row"><div class="sop-icon text-super">爆点</div><div class="sop-desc"><strong>现象:</strong> 底背离+倍量确认<br><strong>操作:</strong> 右侧反转，激进追涨</div></div>
+                             <div class="sop-row"><div class="sop-icon text-up">买入</div><div class="sop-desc"><strong>现象:</strong> 机构吸筹结束<br><strong>操作:</strong> 分批建仓，防守下轨</div></div>
+                             <div class="sop-row"><div class="sop-icon text-blue-signal">持仓</div><div class="sop-desc"><strong>现象:</strong> 价格站稳蓝线上轨<br><strong>操作:</strong> 坚定持有，不破不走</div></div>
+                        </div>
+                        <div v-if="currentStrategy==='CRT'">
+                             <div class="sop-row"><div class="sop-icon text-down">空Trap</div><div class="sop-desc"><strong>现象:</strong> 假突破前高+RSI超买<br><strong>操作:</strong> 阴线确认后反手做空</div></div>
+                             <div class="sop-row"><div class="sop-icon text-up">多Trap</div><div class="sop-desc"><strong>现象:</strong> 假跌破前低+RSI超卖<br><strong>操作:</strong> 阳线确认后反手做多</div></div>
+                        </div>
+                        <div v-if="currentStrategy==='Envelope'">
+                             <div class="sop-row"><div class="sop-icon text-up">回归买</div><div class="sop-desc"><strong>现象:</strong> 跌破下轨+RSI<30<br><strong>操作:</strong> 左侧抄底，目标中轨</div></div>
+                             <div class="sop-row"><div class="sop-icon text-down">回归卖</div><div class="sop-desc"><strong>现象:</strong> 突破上轨+RSI>70<br><strong>操作:</strong> 乖离过大，止盈离场</div></div>
+                        </div>
+                        <div v-if="currentStrategy==='T3'">
+                             <div class="sop-row"><div class="sop-icon text-up">趋势多</div><div class="sop-desc"><strong>现象:</strong> 站上T3均线+MACD红<br><strong>操作:</strong> 顺势做多，均线防守</div></div>
+                             <div class="sop-row"><div class="sop-icon text-down">趋势空</div><div class="sop-desc"><strong>现象:</strong> 跌破T3均线+MACD绿<br><strong>操作:</strong> 顺势做空，反弹即卖</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. 资产管理 -->
+                <div class="w-[280px] flex flex-col bg-[var(--bg-panel)] flex-none">
+                    <div class="flex border-b border-[var(--border-color)] bg-[var(--bg-root)]">
+                        <div :class="['tab-btn', activeRightTab==='sim'?'active':'']" @click="activeRightTab='sim'">模拟(Sim)</div>
+                        <div :class="['tab-btn', activeRightTab==='asset'?'active':'']" @click="activeRightTab='asset'">持仓(Assets)</div>
+                    </div>
+                    <div v-if="activeRightTab==='sim'" class="flex-1 p-2 flex flex-col gap-2 overflow-y-auto" :class="{'alert-tp': alertState.type==='TP', 'alert-sl': alertState.type==='SL'}">
+                        <div class="grid grid-cols-2 gap-x-2 gap-y-3">
+                            <div><label class="trade-label">成本</label><input v-model.number="trade.entry" @input="updateTrade" type="number" class="input-dark trade-input text-blue-400" step="0.01"></div>
+                            <div><label class="trade-label">股数</label><input v-model.number="trade.qty" @input="updateTrade" type="number" class="input-dark trade-input"></div>
+                            <div><label class="trade-label text-green-500">止盈</label><input v-model.number="trade.tp" @input="updateTrade" type="number" class="input-dark trade-input text-up border-green-500/30" step="0.01"></div>
+                            <div><label class="trade-label text-red-500">止损</label><input v-model.number="trade.sl" @input="updateTrade" type="number" class="input-dark trade-input text-down border-red-500/30" step="0.01"></div>
+                        </div>
+                        <button @click="addToPortfolio" class="btn btn-blue w-full mt-auto mb-1">加入持仓组合</button>
+                    </div>
+                    <div v-if="activeRightTab==='asset'" class="flex-1 p-2 overflow-y-auto">
+                        <div v-if="portfolio.length === 0" class="text-center text-xs text-[var(--text-sub)] mt-4">暂无持仓</div>
+                        <div v-else>
+                            <div class="asset-row asset-header"><div>代码</div><div>盈亏%</div><div>市值</div><div>占比</div><div></div></div>
+                            <div v-for="(p, idx) in portfolio" :key="idx" class="asset-row">
+                                <div><div class="font-bold">{{p.symbol}}</div><div class="text-[8px] text-[var(--text-secondary)] truncate w-12">{{p.name}}</div></div>
+                                <div :class="p.plPercent>=0?'text-up':'text-down'">{{p.plPercent}}%</div>
+                                <div>{{formatCompact(p.marketVal)}}</div>
+                                <div>{{p.weight}}%</div>
+                                <div @click="removeAsset(idx)" class="cursor-pointer text-red-500 hover:text-red-300 font-bold text-center">✕</div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-[var(--border-color)] flex justify-between text-xs font-bold text-[var(--text-main)]">
+                                <span>总资产</span><span>{{formatCurrency(totalAssetValue)}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, computed, nextTick } = Vue;
+
+    const STOCK_LISTS = {
+        'SPY': 'NVDA,AAPL,MSFT,AMZN,META,GOOGL,TSLA,AMD,AVGO,LLY,JPM,V,UNH,XOM',
+        'HSI': '0700.HK,9988.HK,3690.HK,1299.HK,0941.HK,0939.HK,0005.HK,0883.HK,1398.HK,3988.HK,0020.HK,9618.HK,1810.HK,2020.HK,0388.HK,1211.HK,2269.HK,0001.HK,0011.HK,0003.HK,2318.HK,0016.HK,0027.HK,0066.HK,0101.HK,0175.HK',
+        'CSI': '600519.SS,300750.SZ,601318.SS,600036.SS,000858.SZ,000333.SZ,601888.SS'
+    };
+    const PROXIES = [ 'https://api.allorigins.win/get?url=', 'https://corsproxy.io/?' ];
+
+    const TA = {
+        EMA: (data, period) => { let k = 2/(period+1), res=[data[0]]; for(let i=1;i<data.length;i++) res.push(data[i]*k+res[i-1]*(1-k)); return res; },
+        HHV: (data, period) => { let res=[]; for(let i=0;i<data.length;i++) res.push(Math.max(...data.slice(Math.max(0,i-period+1),i+1))); return res; },
+        LLV: (data, period) => { let res=[]; for(let i=0;i<data.length;i++) res.push(Math.min(...data.slice(Math.max(0,i-period+1),i+1))); return res; },
+        REF: (arr, n) => { let res = new Array(n).fill(arr[0]); for(let i=n; i<arr.length; i++) res.push(arr[i-n]); return res; },
+        BARSLAST: (arr) => { let res=[], last=-1; for(let i=0;i<arr.length;i++){ if(arr[i]) last=i; res.push(last===-1?0:i-last); } return res; },
+        SMA_TDX: (data, n, m) => { let res=[data[0]]; for(let i=1;i<data.length;i++) res.push((data[i]*m+res[i-1]*(n-m))/n); return res; },
+        MA: (data, period) => { let res=[]; for(let i=0;i<data.length;i++){ if(i<period-1){res.push(data[i]);continue} let sum=0;for(let j=0;j<period;j++)sum+=data[i-j];res.push(sum/period) } return res; },
+        SMA: (data, period) => { let res=[]; for(let i=0;i<data.length;i++){ if(i<period-1){res.push(data[i]);continue} let sum=0;for(let j=0;j<period;j++)sum+=data[i-j];res.push(sum/period) } return res; },
+        RSI: (data, period) => {
+            let rsi = [], gains = [], losses = [];
+            for (let i = 1; i < data.length; i++) {
+                let diff = data[i] - data[i - 1];
+                gains.push(diff > 0 ? diff : 0);
+                losses.push(diff < 0 ? -diff : 0);
+            }
+            for (let i = 0; i < data.length; i++) {
+                if (i < period) { rsi.push(50); continue; }
+                let avgGain = gains.slice(i-period, i).reduce((a,b)=>a+b,0)/period;
+                let avgLoss = losses.slice(i-period, i).reduce((a,b)=>a+b,0)/period;
+                let rs = avgGain / (avgLoss || 1);
+                rsi.push(100 - (100 / (1 + rs)));
+            }
+            return rsi;
+        },
+        ATR: (highs, lows, closes, period) => {
+            let trs = []; for(let i=1;i<highs.length;i++) trs.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+            let res = []; for(let i=0;i<trs.length;i++) { if(i<period){res.push(trs[i]);continue;} let s=0;for(let j=0;j<period;j++)s+=trs[i-j];res.push(s/period); } return res;
+        },
+        T3: (data, period, v=0.7) => {
+            let e1=TA.EMA(data,period), e2=TA.EMA(e1,period), e3=TA.EMA(e2,period), e4=TA.EMA(e3,period), e5=TA.EMA(e4,period), e6=TA.EMA(e5,period);
+            const c1=-v*v*v, c2=3*v*v+3*v*v*v, c3=-6*v*v-3*v-3*v*v*v, c4=1+3*v+v*v*v+3*v*v;
+            return e1.map((_,i)=> c1*e6[i] + c2*e5[i] + c3*e4[i] + c4*e3[i]);
+        }
+    };
+
+    createApp({
+        data() {
+            return {
+                inputSymbols: '', activeSymbols: [], period: '1d',
+                stocks: [], currentStock: null, loading: false, progress: '', 
+                chart: null, watchlist: [], sentimentMap: {}, portfolio: [],
+                trade: { entry: 0, qty: 100, sl: 0, tp: 0 },
+                activeTool: 'cursor', drawStep: 0, drawStartPoint: null, drawings: [], trendLineSeries: [],
+                newsList: [], newsLoading: false,
+                alertState: { triggered: false, type: '', message: '' },
+                sortKey: null, sortOrder: 'desc', isDark: true,
+                autoRefreshTimer: null, autoRefreshCount: 900, activeRightTab: 'sim',
+                currentStrategy: 'Holo', extraSeries: {},
+                marketFilter: 'ALL'
+            }
+        },
+        created() { this.tradeLines = { entry: null, sl: null, tp: null }; },
+        computed: {
+            periodName() { return {'15m':'15M', '1h':'1H', '4h':'4H', '1d':'Daily', '1wk':'Weekly'}[this.period]; },
+            tradeStats() {
+                if(!this.currentStock || this.trade.entry <= 0) return { pl: 0, totalCost: 0 };
+                const totalCost = this.trade.entry * this.trade.qty;
+                const pl = (this.currentStock.price - this.trade.entry) * this.trade.qty;
+                this.checkAlerts(this.currentStock.price); return { pl, totalCost };
+            },
+            sortedStocks() {
+                let list = this.stocks;
+                if (this.marketFilter !== 'ALL') {
+                    list = list.filter(s => this.getMarketType(s.symbol) === this.marketFilter);
+                }
+                if (!this.sortKey) return list;
+                return [...list].sort((a, b) => {
+                    let valA = a[this.sortKey]; let valB = b[this.sortKey];
+                    if (typeof valA === 'string') { valA = valA.toUpperCase(); valB = valB.toUpperCase(); }
+                    return (valA < valB ? -1 : 1) * (this.sortOrder === 'asc' ? 1 : -1);
+                });
+            },
+            totalAssetValue() { return this.portfolio.reduce((sum, p) => sum + p.marketVal, 0); }
+        },
+        mounted() {
+            const saved = localStorage.getItem('holo_watchlist'); if(saved) this.watchlist = JSON.parse(saved);
+            const savedSent = localStorage.getItem('holo_sentiment'); if(savedSent) this.sentimentMap = JSON.parse(savedSent);
+            const savedPort = localStorage.getItem('holo_portfolio'); if(savedPort) this.portfolio = JSON.parse(savedPort);
+            this.startAutoRefresh();
+        },
+        methods: {
+            // --- NEW: Dual-Pane Chart ---
+            getMarketType(symbol) {
+                if (symbol.includes('.HK')) return 'HK';
+                if (symbol.includes('.SS') || symbol.includes('.SZ')) return 'CN';
+                return 'US';
+            },
+            getMarketClass(symbol) {
+                const type = this.getMarketType(symbol);
+                if (type === 'HK') return 'mk-hk';
+                if (type === 'CN') return 'mk-cn';
+                return 'mk-us';
+            },
+            handleFileUpload(e) {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result; const rawCodes = text.split(/[\r\n, ]+/).map(s => s.trim()).filter(s => s);
+                    if (rawCodes.length > 0) {
+                        rawCodes.forEach(code => { const normalized = this.normalizeSymbol(code); if (!this.watchlist.includes(normalized)) this.watchlist.push(normalized); });
+                        localStorage.setItem('holo_watchlist', JSON.stringify(this.watchlist)); this.inputSymbols = this.watchlist.join(','); this.runScanner(false);
+                    }
+                }; reader.readAsText(file); e.target.value = '';
+            },
+            onStrategyChange() { if (this.currentStock) this.initChart(this.currentStock); },
+            addToPortfolio() { if(!this.currentStock || this.trade.entry<=0 || this.trade.qty<=0) return; const currentVal = this.currentStock.price * this.trade.qty; const newItem = { symbol: this.currentStock.symbol, name: this.currentStock.name, qty: this.trade.qty, avgCost: this.trade.entry, price: this.currentStock.price, marketVal: currentVal, plPercent: ((this.currentStock.price - this.trade.entry)/this.trade.entry * 100).toFixed(2), weight: 0 }; const existingIdx = this.portfolio.findIndex(p => p.symbol === newItem.symbol); if(existingIdx >= 0) this.portfolio[existingIdx] = newItem; else this.portfolio.push(newItem); this.recalcPortfolio(); this.activeRightTab = 'asset'; },
+            removeAsset(idx) { this.portfolio.splice(idx, 1); this.recalcPortfolio(); },
+            recalcPortfolio() { const total = this.portfolio.reduce((s, p) => s + p.marketVal, 0); this.portfolio.forEach(p => { p.weight = total > 0 ? ((p.marketVal / total) * 100).toFixed(1) : 0; }); localStorage.setItem('holo_portfolio', JSON.stringify(this.portfolio)); },
+            updateAssetsPrices() { if(this.portfolio.length === 0) return; let updated = false; this.portfolio.forEach(p => { const stockData = this.stocks.find(s => s.symbol === p.symbol); if(stockData) { p.price = stockData.price; p.marketVal = p.price * p.qty; p.plPercent = ((p.price - p.avgCost)/p.avgCost * 100).toFixed(2); updated = true; } }); if(updated) this.recalcPortfolio(); },
+            changePeriod(p) { this.period = p; if(this.inputSymbols.trim()) this.runScanner(true); else if(this.activeSymbols.length > 0) this.runScanner(true, true); },
+            getRangeForPeriod(p) { if(p === '15m') return '60d'; if(p === '1h' || p === '4h') return '730d'; if(p === '1d') return '2y'; return '5y'; },
+            toggleTheme() { this.isDark = !this.isDark; if(this.chart) { this.chart.applyOptions(this.getChartOptions()); } },
+            getChartOptions() { const textColor = this.isDark?'#d1d4dc':'#131722', bgColor=this.isDark?'#131722':'#ffffff', gridColor=this.isDark?'#2a2e39':'#e6e9f0'; return { layout: { background: { color: bgColor }, textColor }, grid: { vertLines: { color: gridColor }, horzLines: { color: gridColor } }, timeScale: { borderColor: gridColor }, rightPriceScale: { borderColor: gridColor } }; },
+            startAutoRefresh() { if(this.autoRefreshTimer) clearInterval(this.autoRefreshTimer); this.autoRefreshTimer = setInterval(() => { this.autoRefreshCount--; if(this.autoRefreshCount <= 0) { if(!this.loading && this.stocks.length > 0) { this.inputSymbols = this.stocks.map(s=>s.symbol).join(','); this.runScanner(true); this.inputSymbols = ''; } this.autoRefreshCount = 900; } }, 1000); },
+            async fetchNews(symbol) { this.newsList = []; this.newsLoading = true; const ticker = symbol.replace(/\.(HK|SS|SZ)$/, ''); const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${ticker}&region=US&lang=en-US`; const proxyUrl = PROXIES[0] + encodeURIComponent(rssUrl); try { const res = await fetch(proxyUrl); const data = await res.json(); const parser = new DOMParser(); const xmlDoc = parser.parseFromString(data.contents, "text/xml"); const items = xmlDoc.querySelectorAll("item"); const news = []; items.forEach((item, index) => { if(index < 6) { const title = item.querySelector("title").textContent; const link = item.querySelector("link").textContent; const pubDate = new Date(item.querySelector("pubDate").textContent); news.push({ title, link, time: pubDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }); } }); const translated = await Promise.all(news.map(async (n) => { const zhTitle = await this.translateText(n.title); return { ...n, title: zhTitle }; })); this.newsList = translated; } catch(e) { console.warn("RSS error", e); } finally { this.newsLoading = false; } },
+            async translateText(text) { if (!text) return ""; const apiUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`; const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(apiUrl); try { const res = await fetch(proxyUrl); const data = await res.json(); return data[0][0][0]; } catch (e) { return text; } },
+            normalizeSymbol(s) { s = s.toUpperCase(); if (/^\d{3,4}$/.test(s)) { if (s.length === 4) return s + '.HK'; return s.padStart(4, '0') + '.HK'; } if (/^60\d{4}$/.test(s) || /^68\d{4}$/.test(s)) return s + '.SS'; if (/^00\d{4}$/.test(s) || /^30\d{4}$/.test(s)) return s + '.SZ'; return s; },
+            
+            async runScanner(keepSelection = false, useMemory = false) {
+                const lastSelectedSymbol = this.currentStock ? this.currentStock.symbol : null;
+                this.loading = true; this.progress = 'Init';
+                let rawSymbols = [];
+                if (useMemory && this.activeSymbols.length > 0) { rawSymbols = this.activeSymbols; } 
+                else { rawSymbols = this.inputSymbols.split(',').map(s => s.trim()).filter(s => s); if (rawSymbols.length > 0) this.activeSymbols = rawSymbols; }
+                const symbols = rawSymbols.map(s => this.normalizeSymbol(s));
+                let interval = this.period; let range = this.getRangeForPeriod(interval); let is4H = false;
+                if(interval === '4h') { interval = '60m'; is4H = true; } if(interval === '1h') { interval = '60m'; } if(interval === '15m') { interval = '15m'; }
+                const tempStocks = []; const BATCH_SIZE = 2; 
+                for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+                    this.progress = `${Math.min(i, symbols.length)}/${symbols.length}`;
+                    const chunk = symbols.slice(i, i + BATCH_SIZE);
+                    const promises = chunk.map(sym => this.fetchWithRetry(sym, interval, range));
+                    const results = await Promise.all(promises);
+                    results.forEach(res => { if (res) { let finalData = res.data; if(is4H) finalData = this.resampleTo4H(finalData); if(finalData.length >= 50) tempStocks.push(this.calculateIndicators(finalData, res.symbol, res.name)); } });
+                    await new Promise(r => setTimeout(r, 200)); 
+                }
+                this.progress = 'Done'; this.stocks = tempStocks; this.loading = false;
+                if (!useMemory && !keepSelection) this.inputSymbols = '';
+                this.updateAssetsPrices();
+                if (keepSelection && lastSelectedSymbol) { const found = this.stocks.find(s => s.symbol === lastSelectedSymbol); if (found) this.selectStock(found); else if (this.stocks.length > 0) this.selectStock(this.stocks[0]); } else if (this.stocks.length > 0 && !this.currentStock) { this.selectStock(this.stocks[0]); }
+            },
+            
+            // --- Init Chart: Dual Pane ---
+            initChart(stock) {
+                const container = document.getElementById('tv-chart-container'); if(!container) return; container.innerHTML = ''; 
+                this.tradeLines = { entry: null, sl: null, tp: null }; this.drawings = []; this.trendLineSeries = []; this.setTool('cursor');
+                const chart = LightweightCharts.createChart(container, { ...this.getChartOptions(), timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false }, crosshair: { mode: LightweightCharts.CrosshairMode.Normal } });
+                chart.subscribeClick(this.handleChartClick);
+                this.chart = chart;
+
+                // Pane 0: Main Chart (75% height)
+                this.candleSeries = chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderUpColor: '#089981', borderDownColor: '#f23645', wickUpColor: '#089981', wickDownColor: '#f23645' });
+                this.candleSeries.setData(stock.data.map(d => ({ time: d.t, open: d.o, high: d.h, low: d.l, close: d.c })));
+                
+                // Indicators for Pane 0 & 1
+                const lineOpt = { lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false };
+
+                if (this.currentStrategy === 'Holo') {
+                    // Pane 0
+                    chart.addLineSeries({ ...lineOpt, color: '#2962ff' }).setData(stock.indicators.A_SH.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#2962ff', lineStyle: 2 }).setData(stock.indicators.B_SH.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#fcc02e' }).setData(stock.indicators.A_LG.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#fcc02e', lineStyle: 2 }).setData(stock.indicators.B_LG.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    // Pane 1: Money Flow
+                    const volSeries = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'money', pane: 1 });
+                    volSeries.setData(stock.indicators.MAIN_MONEY.map((v, i) => ({ time: stock.data[i].t, value: v, color: stock.indicators.IS_YELLOW[i]?'#fcc02e':(stock.indicators.ACTUAL_BUY[i]?'#089981':'#f23645') })));
+                } 
+                else if (this.currentStrategy === 'Envelope') {
+                    // Pane 0
+                    chart.addLineSeries({ ...lineOpt, color: this.isDark?'#fff':'#333', lineWidth: 2 }).setData(stock.indicators.ma20.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#089981' }).setData(stock.indicators.upper.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#f23645' }).setData(stock.indicators.lower.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    // Pane 1: RSI
+                    const rsiSeries = chart.addLineSeries({ color: '#b481ff', lineWidth: 1, pane: 1, priceScaleId: 'rsi', title: 'RSI(14)' });
+                    // Calculate RSI again for visualization (since we only stored last value in indicators object in prev version, let's recalc full array)
+                    const rsiData = TA.RSI(stock.data.map(d=>d.c), 14);
+                    rsiSeries.setData(rsiData.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    // Add Threshold lines
+                    const rsi80 = chart.addLineSeries({ color: '#f23645', lineWidth: 1, lineStyle: 2, pane: 1, priceScaleId: 'rsi' });
+                    const rsi20 = chart.addLineSeries({ color: '#089981', lineWidth: 1, lineStyle: 2, pane: 1, priceScaleId: 'rsi' });
+                    rsi80.setData(stock.data.map(d => ({ time: d.t, value: 80 })));
+                    rsi20.setData(stock.data.map(d => ({ time: d.t, value: 20 })));
+                } 
+                else if (this.currentStrategy === 'T3') {
+                    // Pane 0
+                    chart.addLineSeries({ ...lineOpt, color: '#b481ff', lineWidth: 2 }).setData(stock.indicators.t3.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    // Pane 1: MACD Proxy (Diff)
+                    const macdSeries = chart.addHistogramSeries({ pane: 1, priceScaleId: 'macd' });
+                    const ema12 = TA.EMA(stock.data.map(d=>d.c), 12); const ema26 = TA.EMA(stock.data.map(d=>d.c), 26);
+                    const diff = ema12.map((v,i)=>v-ema26[i]);
+                    macdSeries.setData(diff.map((v, i) => ({ time: stock.data[i].t, value: v, color: v>=0?'#089981':'#f23645' })));
+                } 
+                else if (this.currentStrategy === 'CRT') {
+                    // Pane 0: Markers
+                    const markers = [];
+                    stock.data.forEach((d, i) => {
+                        const bodySize = Math.abs(d.c - d.o);
+                        const prevBody = i > 0 ? Math.abs(stock.data[i-1].c - stock.data[i-1].o) : 0;
+                        const rsi = TA.RSI(stock.data.map(k=>k.c), 14)[i];
+                        if (bodySize > prevBody * 1.5) {
+                             if (rsi > 80) markers.push({ time: d.t, position: 'belowBar', color: '#089981', shape: 'arrowUp', text: 'Trap' });
+                             if (rsi < 20) markers.push({ time: d.t, position: 'aboveBar', color: '#f23645', shape: 'arrowDown', text: 'Trap' });
+                        }
+                    });
+                    this.candleSeries.setMarkers(markers);
+                    // Pane 1: RSI
+                    const rsiSeries = chart.addLineSeries({ color: '#b481ff', lineWidth: 1, pane: 1, priceScaleId: 'rsi' });
+                    const rsiData = TA.RSI(stock.data.map(d=>d.c), 14);
+                    rsiSeries.setData(rsiData.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                }
+
+                chart.timeScale().fitContent();
+                new ResizeObserver(entries => { if (entries.length && entries[0].target === container) chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height }); }).observe(container);
+            },
+
+            // ... (Standard Methods) ...
+            setTool(tool) { this.activeTool = tool; this.drawStep = 0; this.drawStartPoint = null; const container = document.getElementById('tv-chart-container'); if(container) container.style.cursor = tool !== 'cursor' ? 'crosshair' : 'default'; },
+            handleChartClick(param) {
+                if (!param.point || !this.chart || !this.currentStock) return;
+                const price = this.candleSeries.coordinateToPrice(param.point.y); const time = param.time;
+                if (this.activeTool === 'hline') { const line = this.candleSeries.createPriceLine({ price: price, color: '#b481ff', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Line' }); this.drawings.push(line); this.setTool('cursor'); } 
+                else if (this.activeTool === 'trend') { if(!time) return; const dataIndex = this.currentStock.data.findIndex(d => d.t === time); if(dataIndex === -1) return; if (this.drawStep === 0) { this.drawStartPoint = { time, price, index: dataIndex }; this.drawStep = 1; } else { this.createTrendLine(this.drawStartPoint, { time, price, index: dataIndex }); this.setTool('cursor'); } }
+            },
+            createTrendLine(p1, p2) {
+                const startIndex = Math.min(p1.index, p2.index), endIndex = Math.max(p1.index, p2.index); const slope = (p2.price - p1.price) / (p2.index - p1.index);
+                const lineData = []; for(let i = startIndex; i <= endIndex; i++) lineData.push({ time: this.currentStock.data[i].t, value: p1.price + slope * (i - p1.index) });
+                const trendSeries = this.chart.addLineSeries({ color: this.isDark?'#ffffff':'#000000', lineWidth: 2, lineStyle: 0, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+                trendSeries.setData(lineData); this.trendLineSeries.push(trendSeries);
+            },
+            clearDrawings() { this.drawings.forEach(l => this.candleSeries.removePriceLine(l)); this.drawings = []; this.trendLineSeries.forEach(s => this.chart.removeSeries(s)); this.trendLineSeries = []; },
+            async fetchWithRetry(symbol, interval, range, retries = 2) {
+                let currentProxyIdx = 0;
+                for (let attempt = 0; attempt <= retries; attempt++) {
+                    const proxy = PROXIES[currentProxyIdx];
+                    let url = proxy.includes('allorigins') ? proxy + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`) : proxy + `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
+                    try {
+                        const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const json = await res.json();
+                        const payload = json.contents ? JSON.parse(json.contents) : json;
+                        const result = payload.chart.result[0]; const cleanData = [];
+                        const name = result.meta && result.meta.shortName ? result.meta.shortName : symbol;
+                        if(result && result.timestamp) { const quotes = result.indicators.quote[0]; for(let i=0; i<result.timestamp.length; i++) { if(quotes.close[i] != null) cleanData.push({ t: result.timestamp[i], o: quotes.open[i], h: quotes.high[i], l: quotes.low[i], c: quotes.close[i], v: quotes.volume[i] || 0 }); } }
+                        if (cleanData.length < 50) throw new Error("Not enough data");
+                        return { symbol, name, data: cleanData };
+                    } catch (e) { currentProxyIdx = (currentProxyIdx + 1) % PROXIES.length; await new Promise(r => setTimeout(r, 500 * (attempt + 1))); }
+                } return null;
+            },
+            fillCurrentPrice() { if(!this.currentStock) return; const p = this.currentStock.price; this.trade.entry = p; this.trade.sl = parseFloat((p*0.95).toFixed(2)); this.trade.tp = parseFloat((p*1.1).toFixed(2)); this.updateTrade(); },
+            updateTrade() {
+                if(!this.chart || !this.candleSeries) return;
+                const updateOrCreateLine = (type, price, color, title) => {
+                    const line = this.tradeLines[type];
+                    const options = { price: price, color: color, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: title };
+                    if (price > 0) { if (line) line.applyOptions(options); else this.tradeLines[type] = this.candleSeries.createPriceLine(options); } 
+                    else { if (line) { this.candleSeries.removePriceLine(line); this.tradeLines[type] = null; } }
+                };
+                updateOrCreateLine('entry', this.trade.entry, '#2962ff', 'ENTRY'); updateOrCreateLine('sl', this.trade.sl, '#f23645', 'SL'); updateOrCreateLine('tp', this.trade.tp, '#089981', 'TP');
+            },
+            resetTrade() { this.trade = { entry: 0, qty: 100, sl: 0, tp: 0 }; this.tradeLines = { entry: null, sl: null, tp: null }; this.alertState = { triggered: false }; },
+            selectStock(stock) { this.currentStock = stock; this.resetTrade(); this.fetchNews(stock.symbol); nextTick(() => { this.initChart(stock); }); },
+            toggleWatchlist(symbol) { if(this.watchlist.includes(symbol)) this.watchlist = this.watchlist.filter(s => s !== symbol); else this.watchlist.push(symbol); localStorage.setItem('holo_watchlist', JSON.stringify(this.watchlist)); },
+            isWatchlisted(symbol) { return this.watchlist.includes(symbol); },
+            loadWatchlist() { if(this.watchlist.length>0){ this.inputSymbols = this.watchlist.join(','); this.runScanner(false); } },
+            loadList(type) { if(STOCK_LISTS[type]) { this.inputSymbols = STOCK_LISTS[type]; this.runScanner(false); } },
+            getActionColor(a) { if(a && a.includes("买")) return "text-up"; if(a && a.includes("卖")) return "text-down"; return "text-gray-500"; },
+            formatCompact(val) { return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(val); },
+            formatCurrency(val) { return new Intl.NumberFormat('en-US', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val); },
+            toggleSentiment(symbol) { const current = this.sentimentMap[symbol] || 0; const next = (current + 1) % 4; this.sentimentMap[symbol] = next; localStorage.setItem('holo_sentiment', JSON.stringify(this.sentimentMap)); },
+            getSentimentClass(symbol) { const s = this.sentimentMap[symbol]; if(s === 1) return 'sent-bull'; if(s === 2) return 'sent-bear'; if(s === 3) return 'sent-flat'; return 'sent-none'; },
+            checkAlerts(currentPrice) { if (this.trade.entry <= 0) { this.alertState = { triggered: false, type: '', message: '' }; return; } if (this.trade.tp > 0 && currentPrice >= this.trade.tp) { this.alertState = { triggered: true, type: 'TP', message: `止盈触发! 现价: ${currentPrice}` }; return; } if (this.trade.sl > 0 && currentPrice <= this.trade.sl) { this.alertState = { triggered: true, type: 'SL', message: `止损触发! 现价: ${currentPrice}` }; return; } this.alertState = { triggered: false, type: '', message: '' }; },
+            openComparisonWindow() { if(!this.currentStock) return alert("请先在列表中选择一只个股"); let indexSymbol = 'SPY'; if(this.currentStock.symbol.includes('.HK')) indexSymbol = '^HSI'; if(this.currentStock.symbol.includes('.SS') || this.currentStock.symbol.includes('.SZ')) indexSymbol = '000300.SS'; const win = window.open("", "_blank", "width=1200,height=800"); const htmlContent = `<!DOCTYPE html><html lang="zh-CN"><head><title>VS ${indexSymbol}</title><script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"><\/script><style>body{background:#131722;margin:0;display:flex;flex-direction:column;height:100vh}#c1,#c2{flex:1;border-bottom:1px solid #333}</style></head><body><div id="c1"></div><div id="c2"></div><script>const cOpts={layout:{background:{color:'#131722'},textColor:'#ccc'},grid:{vertLines:{color:'#222'},horzLines:{color:'#222'}}};const c1=LightweightCharts.createChart(document.getElementById('c1'),cOpts);const s1=c1.addCandlestickSeries();const c2=LightweightCharts.createChart(document.getElementById('c2'),cOpts);const s2=c2.addCandlestickSeries();const rs=c2.addBaselineSeries({baseValue:{type:'price',price:0},topLineColor:'#089981',bottomLineColor:'#f23645',priceScaleId:'rs',lineWidth:2});c2.priceScale('rs').applyOptions({scaleMargins:{top:0.8,bottom:0}});c1.timeScale().subscribeVisibleLogicalRangeChange(r=>c2.timeScale().setVisibleLogicalRange(r));c2.timeScale().subscribeVisibleLogicalRangeChange(r=>c1.timeScale().setVisibleLogicalRange(r));async function f(s){try{const r=await fetch('https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+s+'?range=2y&interval=${this.period}'));const j=await r.json();return j.chart.result[0]}catch{return null}}Promise.all([f('${indexSymbol}'),f('${this.currentStock.symbol}')]).then(([i,s])=>{if(i){const d=[];i.timestamp.forEach((t,x)=>{if(i.indicators.quote[0].close[x])d.push({time:t,open:i.indicators.quote[0].open[x],high:i.indicators.quote[0].high[x],low:i.indicators.quote[0].low[x],close:i.indicators.quote[0].close[x]})});s1.setData(d)}if(s){const d=[];const rsD=[];const iMap=new Map(i.timestamp.map((t,x)=>[t,i.indicators.quote[0].close[x]]));s.timestamp.forEach((t,x)=>{const c=s.indicators.quote[0].close[x];if(c){d.push({time:t,open:s.indicators.quote[0].open[x],high:s.indicators.quote[0].high[x],low:s.indicators.quote[0].low[x],close:c});const iv=iMap.get(t);if(iv)rsD.push({time:t,val:c/iv})}});s2.setData(d);if(rsD.length>52){let sma=[];for(let k=0;k<rsD.length;k++){let sum=0,cnt=0;for(let m=0;m<52;m++){if(k-m>=0){sum+=rsD[k-m].val;cnt++}}if(cnt>0)sma.push(sum/cnt);else sma.push(rsD[k].val)}const f=rsD.map((r,x)=>({time:r.time,value:(r.val/sma[x])-1}));rs.setData(f)}}c1.timeScale().fitContent()});<\/script></body></html>`; win.document.write(htmlContent); win.document.close(); },
+            sortBy(key) { if (this.sortKey === key) this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'; else { this.sortKey = key; this.sortOrder = 'desc'; } },
+            getSortIcon(key) { if (this.sortKey !== key) return ''; return this.sortOrder === 'asc' ? '▲' : '▼'; },
+            startAutoRefresh() { if(this.autoRefreshTimer) clearInterval(this.autoRefreshTimer); this.autoRefreshTimer = setInterval(() => { this.autoRefreshCount--; if(this.autoRefreshCount <= 0) { if(!this.loading && this.stocks.length > 0) { this.inputSymbols = this.stocks.map(s=>s.symbol).join(','); this.runScanner(true); this.inputSymbols = ''; } this.autoRefreshCount = 900; } }, 1000); },
+            
+            calculateIndicators(data, symbol, name) {
+                const closes = data.map(d => d.c), highs = data.map(d => d.h), lows = data.map(d => d.l), vols = data.map(d => d.v);
+                const A_SH = TA.EMA(highs, 24), B_SH = TA.EMA(lows, 23), A_LG = TA.EMA(highs, 90), B_LG = TA.EMA(lows, 89);
+                const VAR_H = TA.EMA(TA.HHV(highs, 250), 21), LC = TA.REF(closes, 1);
+                const fundFlowRaw = closes.map((c, i) => { const abs = Math.abs(lows[i]-LC[i]), max = Math.max(lows[i]-LC[i],0); const v = max===0?0:(abs/max*10); return (c*1.3<VAR_H[i])?v:v/10; });
+                const FUND_FLOW = TA.EMA(fundFlowRaw, 3), llvLow30 = TA.LLV(lows, 30), hhvFund30 = TA.HHV(FUND_FLOW, 30);
+                const rawMoneyInput = lows.map((l, i) => (l <= llvLow30[i]) ? (FUND_FLOW[i] + hhvFund30[i] * 2) / 2 : 0);
+                const MAIN_MONEY = TA.EMA(TA.EMA(rawMoneyInput, 3).map(v=>v/10), 5);
+                const refMainMoney = TA.REF(MAIN_MONEY, 1);
+                const IS_YELLOW = MAIN_MONEY.map((v, i) => v > refMainMoney[i]);
+                const llvLow5 = TA.LLV(lows, 5);
+                const ACTUAL_BUY = MAIN_MONEY.map((v, i) => v > 5 && v > refMainMoney[i] && lows[i] < llvLow5[i-5]);
+                const ema12 = TA.EMA(closes, 12), ema26 = TA.EMA(closes, 26), DIFF = ema12.map((v,i)=>v-ema26[i]), DEA = TA.EMA(DIFF, 9), MACD = DIFF.map((v,i)=>(v-DEA[i])*2);
+                
+                const lastIdx = closes.length - 1;
+                let signals = { escape: MACD[lastIdx]<0 && MACD[lastIdx-1]>=0, horizontal: false };
+                let subSignals = { actualBuy: ACTUAL_BUY[lastIdx], isYellow: IS_YELLOW[lastIdx], isRed: MAIN_MONEY[lastIdx]>0 };
+                const trendLong = closes[lastIdx] > B_LG[lastIdx] ? 'Bull' : 'Bear'; const trendShort = closes[lastIdx] > B_SH[lastIdx] ? 'Bull' : 'Bear';
+                const breakUpShort = closes[lastIdx] > A_SH[lastIdx] && closes[lastIdx-1] <= A_SH[lastIdx-1];
+                const breakDownShort = closes[lastIdx] < B_SH[lastIdx] && closes[lastIdx-1] >= B_SH[lastIdx-1];
+                signals.breakUpShort = breakUpShort; signals.breakDownShort = breakDownShort;
+                
+                // Resonance
+                const barsLastBuy = TA.BARSLAST(ACTUAL_BUY);
+                if (!ACTUAL_BUY[lastIdx]) {
+                    let prevBuyIdx = lastIdx - barsLastBuy[lastIdx];
+                    if (prevBuyIdx > 0 && prevBuyIdx < lastIdx - 5) {
+                        if (lows[lastIdx] >= lows[prevBuyIdx] * 0.95) signals.horizontal = true;
+                    }
+                }
+                if (signals.horizontal && (subSignals.isYellow || subSignals.isRed)) { if(closes[lastIdx] >= data[lastIdx].o) signals.resonanceSignal = true; }
+
+                // Pivot
+                const low20 = TA.LLV(lows, 20);
+                if (IS_YELLOW[lastIdx-1] && (subSignals.isRed && !subSignals.isYellow) && lows[lastIdx] <= low20[lastIdx]) signals.pivotSignal = true;
+
+                // SuperBottom
+                const volMA5 = TA.MA(vols, 5);
+                const isVolumeSpike = vols[lastIdx] > volMA5[lastIdx] * 2;
+                let isDivergence = false;
+                if (lows[lastIdx] <= low20[lastIdx] && MACD[lastIdx] > Math.min(...MACD.slice(Math.max(0, lastIdx-20), lastIdx))) isDivergence = true;
+                const isSuppressed = closes[lastIdx] < B_SH[lastIdx];
+                if (isDivergence && isVolumeSpike && !isSuppressed) signals.superBottom = true;
+
+                // --- V9.3 Dynamic Signals for List & Log ---
+                let activeSignal = '', activeSignalColor = '', action = '观望', logTitle = '', logContent = '';
+                
+                if (this.currentStrategy === 'Holo') {
+                    if(signals.resonanceSignal) { activeSignal='★共振'; activeSignalColor='bg-res'; action='共振买入'; }
+                    else if(signals.superBottom) { activeSignal='★爆点'; activeSignalColor='bg-buy'; action='重仓爆点'; }
+                    else if(signals.pivotSignal) { activeSignal='★转折'; activeSignalColor='bg-pivot'; action='极点转折'; }
+                    else if(subSignals.actualBuy) { activeSignal='★买点'; activeSignalColor='bg-buy'; action='买入'; }
+                    else if(subSignals.isYellow) { activeSignal='加速'; activeSignalColor='bg-acc'; action='加速'; }
+                    else if(signals.escape) { activeSignal='逃跑'; activeSignalColor='bg-sell'; action='逃跑'; }
+                    
+                    logTitle = action;
+                    logContent = `
+                        <div class="grid grid-cols-2 gap-2 mb-2 p-2 bg-[var(--bg-panel)] rounded border border-[var(--border-color)]">
+                            <div><div class="text-[9px] text-[#2962ff] font-bold">快轨 (BLUE)</div><div>${trendShort==='Bull'?'↑ 站稳':'↓ 跌破'}</div></div>
+                            <div><div class="text-[9px] text-[#fcc02e] font-bold">慢轨 (GOLD)</div><div>${trendLong==='Bull'?'↑ 长牛':'↓ 长熊'}</div></div>
+                        </div>
+                        <div class="text-[10px] space-y-2">
+                            <div><b>【SOP触发：${action}】</b></div>
+                            ${action==='共振买入' ? '<div><b>环境:</b> 股价回踩W底颈线，主力资金逆势流入。<br><b>指令:</b> 市价建仓 40%。<br><b>风控:</b> 跌破昨日低点止损。</div>' : ''}
+                            ${action==='重仓爆点' ? '<div><b>环境:</b> MACD底背离+成交量倍量，空头力竭。<br><b>指令:</b> 激进买入 60%。<br><b>风控:</b> 跌破今日开盘价止损。</div>' : ''}
+                            ${action==='极点转折' ? '<div><b>环境:</b> 资金由黄转红，动能衰竭。<br><b>指令:</b> 左侧试错 20%。<br><b>风控:</b> 窄幅止损。</div>' : ''}
+                            ${action==='买入' ? '<div><b>环境:</b> 机构吸筹结束，量价配合。<br><b>指令:</b> 分批建仓。<br><b>风控:</b> 跌破通道下轨止损。</div>' : ''}
+                            ${action==='加速' ? '<div><b>环境:</b> 资金持续流入，沿快轨上行。<br><b>指令:</b> 坚定持有。<br><b>风控:</b> 不破蓝线不离场。</div>' : ''}
+                            ${action==='逃跑' ? '<div><b>环境:</b> 顶背离或有效破位。<br><b>指令:</b> 清仓离场。<br><b>风控:</b> 保护利润。</div>' : ''}
+                            ${action==='观望' ? '<div><b>环境:</b> 趋势不明或受压制。<br><b>指令:</b> 空仓等待。<br><b>风控:</b> 多看少动。</div>' : ''}
+                        </div>`;
+                } 
+                else if (this.currentStrategy === 'CRT') {
+                    const rsi = TA.RSI(closes, 14); const curRSI = rsi[lastIdx];
+                    const bodySize = Math.abs(closes[lastIdx] - data[lastIdx].o);
+                    const prevBody = Math.abs(closes[lastIdx-1] - data[lastIdx-1].o);
+                    if (bodySize > prevBody * 1.5 && curRSI > 80) { activeSignal = '做多Trap'; activeSignalColor = 'bg-buy'; action='多头陷阱'; }
+                    if (bodySize > prevBody * 1.5 && curRSI < 20) { activeSignal = '做空Trap'; activeSignalColor = 'bg-sell'; action='空头陷阱'; }
+                    
+                    logTitle = activeSignal || '无结构';
+                    logContent = `
+                        <div class="p-2 space-y-2 text-[10px]">
+                            <div><b>【SOP触发：${action}】</b></div>
+                            ${action==='多头陷阱' ? '<div><b>环境:</b> 假突破前高+大阴线吞没+RSI超买。<br><b>指令:</b> 反手做空。<br><b>风控:</b> 止损设于前高点。</div>' : ''}
+                            ${action==='空头陷阱' ? '<div><b>环境:</b> 假跌破前低+大阳线吞没+RSI超卖。<br><b>指令:</b> 反手做多。<br><b>风控:</b> 止损设于前低点。</div>' : ''}
+                            ${action==='无结构' ? '<div><b>环境:</b> 未出现明显吞没形态。<br><b>指令:</b> 等待信号。</div>' : ''}
+                        </div>`;
+                } 
+                else if (this.currentStrategy === 'Envelope') {
+                    const rsi = TA.RSI(closes, 14); const curRSI = rsi[lastIdx];
+                    const atr = TA.ATR(highs, lows, closes, 14);
+                    const ma20 = TA.SMA(closes, 20);
+                    const upper = ma20.map((m, i) => m + (atr[i]||0)*1.5);
+                    const lower = ma20.map((m, i) => m - (atr[i]||0)*1.5);
+                    if (closes[lastIdx] < lower[lastIdx] && curRSI > 80) { activeSignal = '回归买入'; activeSignalColor = 'bg-buy'; action='回归买'; }
+                    if (closes[lastIdx] > upper[lastIdx] && curRSI < 20) { activeSignal = '回归卖出'; activeSignalColor = 'bg-sell'; action='回归卖'; }
+                    
+                    logTitle = activeSignal || '通道内';
+                    logContent = `
+                        <div class="p-2 space-y-2 text-[10px]">
+                            <div><b>【SOP触发：${action}】</b></div>
+                            ${action==='回归买' ? '<div><b>环境:</b> 跌破下轨+RSI超卖(过度恐慌)。<br><b>指令:</b> 左侧抄底。<br><b>目标:</b> 均线回归。</div>' : ''}
+                            ${action==='回归卖' ? '<div><b>环境:</b> 突破上轨+RSI超买(过度贪婪)。<br><b>指令:</b> 止盈离场。<br><b>风控:</b> 切勿追高。</div>' : ''}
+                            ${action==='通道内' ? '<div><b>环境:</b> 价格在包络线通道内运行。<br><b>指令:</b> 观望或持仓。</div>' : ''}
+                        </div>`;
+                } 
+                else if (this.currentStrategy === 'T3') {
+                    const rsi = TA.RSI(closes, 14); const curRSI = rsi[lastIdx];
+                    const t3 = TA.T3(closes, 20);
+                    if (closes[lastIdx] > t3[lastIdx] && curRSI > 50) { activeSignal = '趋势多'; activeSignalColor = 'bg-buy'; action='趋势多'; }
+                    if (closes[lastIdx] < t3[lastIdx] && curRSI < 50) { activeSignal = '趋势空'; activeSignalColor = 'bg-sell'; action='趋势空'; }
+                    
+                    logTitle = activeSignal || '震荡';
+                    logContent = `
+                        <div class="p-2 space-y-2 text-[10px]">
+                            <div><b>【SOP触发：${action}】</b></div>
+                            ${action==='趋势多' ? '<div><b>环境:</b> 站稳T3均线+动能向上。<br><b>指令:</b> 顺势做多。<br><b>风控:</b> 跌破T3止损。</div>' : ''}
+                            ${action==='趋势空' ? '<div><b>环境:</b> 跌破T3均线+动能向下。<br><b>指令:</b> 顺势做空。<br><b>风控:</b> 站上T3止损。</div>' : ''}
+                            ${action==='震荡' ? '<div><b>环境:</b> 围绕T3均线缠绕。<br><b>指令:</b> 观望。</div>' : ''}
+                        </div>`;
+                }
+                
+                // Indicators export for chart
+                const atr = TA.ATR(highs, lows, closes, 14);
+                const ma20 = TA.SMA(closes, 20);
+                const upper = ma20.map((m, i) => m + (atr[i]||0)*1.5);
+                const lower = ma20.map((m, i) => m - (atr[i]||0)*1.5);
+                const t3 = TA.T3(closes, 20);
+
+                const lastTime = new Date(data[lastIdx].t * 1000);
+                return { 
+                    symbol, name, price: closes[lastIdx], change: (closes[lastIdx]-closes[lastIdx-1])/closes[lastIdx-1]*100, data, 
+                    indicators: { A_SH, B_SH, A_LG, B_LG, MAIN_MONEY, IS_YELLOW, ACTUAL_BUY, ma20, upper, lower, t3 }, 
+                    signals, subSignals, trendLong, trendShort, isSuppressed, action, 
+                    activeSignal, activeSignalColor, logTitle, logContent, // V9.3 New Fields
+                    lastUpdated: lastTime.toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}) 
+                };
+            },
+            initChart(stock) {
+                const container = document.getElementById('tv-chart-container'); if(!container) return; container.innerHTML = ''; 
+                this.tradeLines = { entry: null, sl: null, tp: null }; this.drawings = []; this.trendLineSeries = []; this.setTool('cursor');
+                const chart = LightweightCharts.createChart(container, { ...this.getChartOptions(), timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false }, crosshair: { mode: LightweightCharts.CrosshairMode.Normal } });
+                chart.subscribeClick(this.handleChartClick);
+                this.chart = chart;
+                this.candleSeries = chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderUpColor: '#089981', borderDownColor: '#f23645', wickUpColor: '#089981', wickDownColor: '#f23645' });
+                this.candleSeries.setData(stock.data.map(d => ({ time: d.t, open: d.o, high: d.h, low: d.l, close: d.c })));
+                
+                const lineOpt = { lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false };
+
+                // Dynamic Chart Rendering
+                if (this.currentStrategy === 'Holo') {
+                    chart.addLineSeries({ ...lineOpt, color: '#2962ff' }).setData(stock.indicators.A_SH.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#2962ff', lineStyle: 2 }).setData(stock.indicators.B_SH.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#fcc02e' }).setData(stock.indicators.A_LG.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#fcc02e', lineStyle: 2 }).setData(stock.indicators.B_LG.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    const volumeSeries = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'money', pane: 1 });
+                    chart.priceScale('money').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+                    volumeSeries.setData(stock.indicators.MAIN_MONEY.map((v, i) => ({ time: stock.data[i].t, value: v, color: stock.indicators.IS_YELLOW[i]?'#fcc02e':(stock.indicators.ACTUAL_BUY[i]?'#089981':'#f23645') })));
+                } else if (this.currentStrategy === 'Envelope') {
+                    chart.addLineSeries({ ...lineOpt, color: this.isDark?'#fff':'#333', lineWidth: 2 }).setData(stock.indicators.ma20.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#089981' }).setData(stock.indicators.upper.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                    chart.addLineSeries({ ...lineOpt, color: '#f23645' }).setData(stock.indicators.lower.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                } else if (this.currentStrategy === 'T3') {
+                    chart.addLineSeries({ ...lineOpt, color: '#b481ff', lineWidth: 2 }).setData(stock.indicators.t3.map((v, i) => ({ time: stock.data[i].t, value: v })));
+                } else if (this.currentStrategy === 'CRT') {
+                    // CRT visual markers (arrows) logic
+                    const markers = [];
+                    stock.data.forEach((d, i) => {
+                        const bodySize = Math.abs(d.c - d.o);
+                        const prevBody = i > 0 ? Math.abs(stock.data[i-1].c - stock.data[i-1].o) : 0;
+                        const rsi = TA.RSI(stock.data.map(k=>k.c), 14)[i];
+                        if (bodySize > prevBody * 1.5) {
+                             if (rsi > 80) markers.push({ time: d.t, position: 'belowBar', color: '#089981', shape: 'arrowUp', text: 'Trap' });
+                             if (rsi < 20) markers.push({ time: d.t, position: 'aboveBar', color: '#f23645', shape: 'arrowDown', text: 'Trap' });
+                        }
+                    });
+                    this.candleSeries.setMarkers(markers);
+                }
+
+                chart.timeScale().fitContent();
+                new ResizeObserver(entries => { if (entries.length && entries[0].target === container) chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height }); }).observe(container);
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
