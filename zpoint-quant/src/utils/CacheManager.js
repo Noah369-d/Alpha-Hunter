@@ -13,6 +13,8 @@ class CacheManager {
     this.storeName = 'marketData'
     this.maxCacheSize = 1000 // 最大缓存条目数
     this.defaultTTL = 5 * 60 * 1000 // 默认5分钟过期
+    // 单调访问计数器，用于确定性 LRU（在内存中维护）
+    this._accessCounter = 0
   }
 
   /**
@@ -47,6 +49,8 @@ class CacheManager {
           objectStore.createIndex('timestamp', 'timestamp', { unique: false })
           objectStore.createIndex('lastAccessed', 'lastAccessed', { unique: false })
           objectStore.createIndex('expiresAt', 'expiresAt', { unique: false })
+          // 单调访问序列，便于确定性 LRU 排序
+          objectStore.createIndex('accessSeq', 'accessSeq', { unique: false })
         }
       }
     })
@@ -95,11 +99,12 @@ class CacheManager {
           return
         }
 
-        // 更新最后访问时间（LRU）并等待写入完成再返回
+        // 更新最后访问信息（LRU）：lastAccessed + 单调访问计数器
         record.lastAccessed = Date.now()
+        record.accessSeq = ++this._accessCounter
         const putReq = objectStore.put(record)
         putReq.onsuccess = () => resolve(record.data)
-        putReq.onerror = () => reject(new Error('Failed to update lastAccessed'))
+        putReq.onerror = () => reject(new Error('Failed to update accessSeq'))
       }
 
       request.onerror = () => {
@@ -125,12 +130,14 @@ class CacheManager {
       const transaction = this.db.transaction([this.storeName], 'readwrite')
       const objectStore = transaction.objectStore(this.storeName)
 
+      const now = Date.now()
       const record = {
         key: key,
         data: data,
-        timestamp: Date.now(),
-        lastAccessed: Date.now(),
-        expiresAt: ttl ? Date.now() + ttl : null
+        timestamp: now,
+        lastAccessed: now,
+        accessSeq: ++this._accessCounter,
+        expiresAt: ttl ? now + ttl : null
       }
 
       const request = objectStore.put(record)
@@ -242,24 +249,9 @@ class CacheManager {
 
           cursor.continue()
         } else {
-          // 如果没有通过游标删除到任何条目，作为后备，按 lastAccessed 排序删除最旧的条目
+          // 如果没有通过游标删除到任何条目，作为后备我们不进行额外删除（保守策略）
           if (deletedCount === 0) {
-            try {
-              const allReq = objectStore.getAll()
-              allReq.onsuccess = () => {
-                const all = allReq.result || []
-                if (all.length === 0) return resolve(0)
-                all.sort((a, b) => a.lastAccessed - b.lastAccessed)
-                const toRemove = Math.min(toDelete, all.length)
-                for (let i = 0; i < toRemove; i++) {
-                  objectStore.delete(all[i].key || all[i].keyPath || all[i].key)
-                }
-                resolve(toRemove)
-              }
-              allReq.onerror = () => resolve(0)
-            } catch (e) {
-              resolve(0)
-            }
+            return resolve(0)
           } else {
             resolve(deletedCount)
           }
@@ -279,37 +271,70 @@ class CacheManager {
   async evictIfNeeded() {
     const currentSize = await this.size()
 
-    if (currentSize < this.maxCacheSize) {
+    // 当当前条目数 <= 最大值时无需删除
+    if (currentSize <= this.maxCacheSize - 1) {
       return
     }
 
-    // 需要删除的条目数
-    const toDelete = currentSize - this.maxCacheSize + 1
+    // 需要删除的条目数（考虑即将插入的新条目，因此 +1）
+    const toDelete = Math.max(0, currentSize - this.maxCacheSize + 1)
+    if (toDelete <= 0) return
 
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readwrite')
       const objectStore = transaction.objectStore(this.storeName)
-      const index = objectStore.index('lastAccessed')
+      // 尝试使用 accessSeq 索引以获得确定性排序；若不存在则回退到 lastAccessed
+      let index
+      try {
+        index = objectStore.index('accessSeq')
+      } catch (e) {
+        index = objectStore.index('lastAccessed')
+      }
 
-      // 按最后访问时间升序排列（最旧的在前）
-      const request = index.openCursor(null, 'next')
-      let deletedCount = 0
-
-      request.onsuccess = (event) => {
+      // 收集所有记录的主键与 accessSeq/lastAccessed、timestamp 信息，后续根据 accessSeq 排序以保证确定性
+      const records = []
+      const cursorReq = index.openCursor(null, 'next')
+      cursorReq.onsuccess = (event) => {
         const cursor = event.target.result
-
-        if (cursor && deletedCount < toDelete) {
-          cursor.delete()
-          deletedCount++
+        if (cursor) {
+          records.push({
+            key: cursor.primaryKey,
+            accessSeq: cursor.value.accessSeq != null ? cursor.value.accessSeq : (cursor.value.lastAccessed || 0),
+            lastAccessed: cursor.value.lastAccessed || 0,
+            timestamp: cursor.value.timestamp || 0
+          })
           cursor.continue()
         } else {
-          resolve()
+          if (records.length === 0) return
+
+          // 按 accessSeq 升序排序（较小先被淘汰）；若 accessSeq 相等则按 lastAccessed 再按 timestamp
+          records.sort((a, b) => {
+            if (a.accessSeq !== b.accessSeq) return a.accessSeq - b.accessSeq
+            if (a.lastAccessed !== b.lastAccessed) return a.lastAccessed - b.lastAccessed
+            return a.timestamp - b.timestamp
+          })
+
+          const keysToDelete = records.slice(0, toDelete).map(r => r.key)
+
+          // 依次删除收集到的键，等到所有删除请求完成
+          const deleteNext = () => {
+            if (keysToDelete.length === 0) return
+            const k = keysToDelete.shift()
+            const delReq = objectStore.delete(k)
+            delReq.onsuccess = () => {
+              if (keysToDelete.length > 0) deleteNext()
+            }
+            delReq.onerror = () => reject(new Error('Failed to delete during eviction'))
+          }
+
+          if (keysToDelete.length > 0) deleteNext()
         }
       }
 
-      request.onerror = () => {
-        reject(new Error('Failed to evict cache'))
-      }
+      cursorReq.onerror = () => reject(new Error('Failed to evict cache (cursor)'))
+
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(new Error('Failed to evict cache (transaction error)'))
     })
   }
 

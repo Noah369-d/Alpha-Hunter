@@ -1,0 +1,18 @@
+/* Minimal subset of styles extracted from 9.9.html to support HoloResonance view */
+:root{
+  --bg-root:#101318; --bg-panel:#1e222d; --border-color:#2a2e39; --text-main:#d1d4dc; --text-sub:#787b86; --accent-blue:#2962ff;
+}
+.holo-root{height:100%; color:var(--text-main);}
+.topbar{display:flex;align-items:center;justify-content:space-between}
+.title{font-size:18px;font-weight:800;color:var(--accent-blue)}
+.sub{font-size:12px;color:var(--text-sub);font-weight:400;margin-left:6px}
+.card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:6px}
+.btn{padding:4px 8px;border-radius:4px;font-size:12px;cursor:pointer;border:1px solid transparent}
+.btn-ghost{background:transparent;color:var(--text-sub)}
+.btn-blue{background:var(--accent-blue);color:#fff}
+.input-dark{background:transparent;border:1px solid var(--border-color);padding:4px 6px;color:var(--text-main);border-radius:4px}
+.stock-grid-header{display:grid;grid-template-columns:30px 1fr 80px 40px 1fr;padding:8px;font-size:11px;color:var(--text-sub);border-bottom:1px solid var(--border-color)}
+.stock-grid-row{display:grid;grid-template-columns:30px 1fr 80px 40px 1fr;padding:8px;align-items:center;border-bottom:1px solid var(--border-color);cursor:pointer}
+.rows{max-height:500px}
+.chart{height:360px}
+.bottom-area{min-height:140px}

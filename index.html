@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全息共振 V10.0 - 模块化版</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <style>
+        [v-cloak] { display: none !important; }
+        
+        /* --- 核心主题变量 --- */
+        :root {
+            --bg-root: #101318; --bg-panel: #1e222d; --border-color: #2a2e39;
+            --text-main: #d1d4dc; --text-sub: #787b86; --hover-bg: #2a2e39;
+            --input-bg: #000000;
+            --accent-blue: #2962ff; --accent-purple: #b481ff;
+            --tv-green: #089981; --tv-red: #f23645; --tv-yellow: #fcc02e;
+        }
+        [data-theme="light"] {
+            --bg-root: #f0f3fa; --bg-panel: #ffffff; --border-color: #e0e3eb;
+            --text-main: #131722; --text-sub: #5d606b; --bg-hover: #f1f3f6;
+            --input-bg: #ffffff;
+        }
+
+        body { 
+            background-color: var(--bg-root); 
+            color: var(--text-main); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            overflow: hidden; 
+            transition: background 0.3s; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        .card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 4px; }
+        
+        /* 交互组件 */
+        .btn { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-blue { background: var(--accent-blue); color: white; } .btn-blue:hover { opacity: 0.9; }
+        .btn-purple { background: var(--accent-purple); color: white; } .btn-purple:hover { opacity: 0.9; }
+        .btn-ghost { background: transparent; color: var(--text-sub); } .btn-ghost:hover { background: var(--hover-bg); color: var(--text-main); }
+        .btn-active { background: var(--hover-bg); color: var(--accent-blue); border-color: var(--accent-blue); }
+        .btn-star { color: #5d606b; font-size: 14px; padding: 0 2px; cursor: pointer; } .btn-star.active { color: #fcc02e; }
+
+        .input-dark { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 2px 6px; font-size: 12px; border-radius: 3px; outline: none; width: 100%; transition: 0.2s; }
+        .input-dark:focus { border-color: var(--accent-blue); }
+
+        /* 颜色定义 */
+        .text-up { color: var(--tv-green); } .text-down { color: var(--tv-red); } .text-warn { color: var(--tv-yellow); }
+        .text-blue-signal { color: var(--accent-blue); }
+        
+        .signal-tag { padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: bold; margin-right: 3px; display: inline-block; border: 1px solid transparent; }
+        .bg-buy { background: rgba(8, 153, 129, 0.15); color: var(--tv-green); }
+        .bg-acc { background: rgba(252, 192, 46, 0.15); color: var(--tv-yellow); }
+        .bg-sell { background: rgba(242, 54, 69, 0.15); color: var(--tv-red); }
+        .bg-pivot { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
+        .bg-res { background: rgba(180, 129, 255, 0.15); color: var(--accent-purple); }
+        
+        .trend-pill { font-size: 9px; padding: 1px 4px; border-radius: 2px; min-width: 14px; text-align: center; }
+        .trend-up { background: var(--tv-green); color: #fff; font-weight: bold; }
+        .trend-bear { background: #363a45; color: #9ca3af; }
+
+        .market-btn { padding: 1px 5px; font-size: 9px; border-radius: 3px; cursor: pointer; color: var(--text-sub); border: 1px solid transparent; transition: 0.2s; }
+        .market-btn.active { background-color: var(--hover-bg); color: var(--text-main); border-color: var(--border-color); font-weight: bold; }
+        
+        .market-badge { font-size: 8px; padding: 0 2px; border-radius: 2px; margin-right: 3px; font-weight: bold; color: #fff; min-width: 14px; text-align: center; height: 12px; line-height: 12px; display: inline-block; }
+        .mk-us { background-color: #2962ff; } .mk-hk { background-color: #00bcd4; } .mk-cn { background-color: #f23645; }
+
+        .sentiment-btn { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--text-sub); display: inline-block; cursor: pointer; margin-right: 4px; }
+        .sent-bull { background-color: var(--tv-green); border-color: var(--tv-green); } 
+        .sent-bear { background-color: var(--tv-red); border-color: var(--tv-red); } 
+        .sent-flat { background-color: #fcc02e; border-color: #fcc02e; }
+        .sent-none { background-color: transparent; }
+
+        /* 列表 Grid 布局 */
+        .stock-grid-header, .stock-grid-row {
+            display: grid;
+            grid-template-columns: 50px 100px 70px 50px 1fr;
+            gap: 4px;
+            align-items: center;
+            padding: 4px 8px;
+        }
+        .stock-grid-header { height: 28px; border-bottom: 1px solid var(--border-color); font-size: 10px; color: var(--text-sub); background-color: var(--bg-root); }
+        .stock-grid-row { min-height: 42px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.1s; }
+        .stock-grid-row:hover { background-color: var(--hover-bg); }
+        .stock-grid-row.active { background-color: var(--hover-bg); border-left: 2px solid var(--accent-blue); padding-left: 6px; }
+
+        .text-super { color: #ff00ff; text-shadow: 0 0 5px rgba(255, 0, 255, 0.4); }
+        .text-resonance { color: var(--accent-purple); font-weight: 800; }
+        .text-pivot { color: #ff9800; }
+
+        .sop-row { display: flex; align-items: start; gap: 8px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed var(--border-color); }
+        .sop-row:last-child { border-bottom: none; }
+        .sop-icon { width: 40px; text-align: center; font-size: 10px; font-weight: bold; flex-shrink: 0; padding-top: 2px; }
+        .sop-desc { font-size: 10px; color: var(--text-sub); line-height: 1.4; }
+        .sop-desc strong { color: var(--text-main); }
+
+        .asset-row { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr 1fr; gap: 4px; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border-color); color: var(--text-main); align-items: center; }
+        .asset-header { font-weight: bold; color: var(--text-sub); border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+        .tab-btn { flex: 1; text-align: center; padding: 4px; font-size: 11px; cursor: pointer; color: var(--text-sub); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); background: var(--hover-bg); }
+
+        .strategy-select {
+            background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-blue); font-weight: bold;
+            font-size: 12px; padding: 2px 6px; border-radius: 4px; outline: none; cursor: pointer;
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 4px; height: 4px; } 
+        ::-webkit-scrollbar-track { background: transparent; } 
+        ::-webkit-scrollbar-thumb { background: #363a45; border-radius: 2px; }
+
+        /* 通知提示 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 12px 20px;
+            border-radius: 6px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification.error {
+            border-color: var(--tv-red);
+            background: rgba(242, 54, 69, 0.1);
+        }
+
+        .notification.warning {
+            border-color: var(--tv-yellow);
+            background: rgba(252, 192, 46, 0.1);
+        }
+
+        .notification.success {
+            border-color: var(--tv-green);
+            background: rgba(8, 153, 129, 0.1);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* 加载动画 */
+        .loading-spinner {
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-blue);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div id="app" v-cloak></div>
+
+    <!-- 模块化脚本加载 -->
+    <script type="module">
+        import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+        
+        // 动态导入主应用
+        import('./src/app.js').then(module => {
+            const app = createApp(module.default);
+            app.mount('#app');
+        }).catch(error => {
+            console.error('Failed to load application:', error);
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100vh; color: #f23645;">
+                    <div style="text-align: center;">
+                        <h1>应用加载失败</h1>
+                        <p>${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">
+                            重新加载
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>

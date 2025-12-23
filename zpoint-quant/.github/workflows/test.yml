@@ -1,0 +1,69 @@
+name: 测试
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 安装依赖
+      run: npm ci
+    
+    - name: 运行单元测试
+      run: npm run test:unit
+    
+    - name: 运行属性测试
+      run: npm run test:property
+    
+    - name: 生成测试覆盖率
+      run: npm run coverage
+    
+    - name: 上传覆盖率报告
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: 检查覆盖率阈值
+      run: |
+        if [ -f coverage/coverage-summary.json ]; then
+          echo "检查测试覆盖率..."
+          node -e "
+            const coverage = require('./coverage/coverage-summary.json');
+            const total = coverage.total;
+            const threshold = 80;
+            
+            console.log('Lines:', total.lines.pct + '%');
+            console.log('Statements:', total.statements.pct + '%');
+            console.log('Functions:', total.functions.pct + '%');
+            console.log('Branches:', total.branches.pct + '%');
+            
+            if (total.lines.pct < threshold || 
+                total.statements.pct < threshold || 
+                total.functions.pct < threshold || 
+                total.branches.pct < threshold) {
+              console.error('测试覆盖率低于' + threshold + '%阈值');
+              process.exit(1);
+            }
+          "
+        fi

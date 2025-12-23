@@ -31,6 +31,11 @@
           <span class="icon">🚀</span>
           <span>Alpha Pro</span>
         </router-link>
+
+        <router-link to="/holo" class="nav-item" active-class="active">
+          <span class="icon">🌀</span>
+          <span>HoloResonance</span>
+        </router-link>
         
         <router-link to="/risk" class="nav-item" active-class="active">
           <span class="icon">🛡️</span>

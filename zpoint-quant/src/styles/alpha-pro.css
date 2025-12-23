@@ -1,0 +1,100 @@
+:root {
+  --ap-bg: #f8fafc;
+  --ap-panel: #ffffff;
+  --ap-border: #e2e8f0;
+  --ap-text: #0f172a;
+  --ap-muted: #64748b;
+  --ap-accent: #0f172a;
+  --ap-up: #059669;
+  --ap-down: #dc2626;
+}
+
+[data-theme="dark"] {
+  --ap-bg: #0f172a;
+  --ap-panel: #1e293b;
+  --ap-border: #334155;
+  --ap-text: #f1f5f9;
+  --ap-muted: #94a3b8;
+}
+
+body.alpha-pro {
+  background: var(--ap-bg);
+  color: var(--ap-text);
+}
+
+.alpha-pro .layout { display:flex; gap:12px; }
+.alpha-pro .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items:start }
+.alpha-pro .left { width: 100% }
+.alpha-pro .card { background: var(--ap-panel); border: 1px solid var(--ap-border); padding: 14px; border-radius: 10px; box-shadow: 0 2px 6px rgba(2,6,23,0.03) }
+.alpha-pro h1 { margin-bottom:12px }
+.alpha-pro .right { display:flex; flex-direction:column; gap:12px }
+.alpha-pro .tools { display:flex; gap:8px; align-items:center }
+.:root {
+  --ap-bg: #f8fafc;
+  --ap-panel: #ffffff;
+  --ap-border: #e2e8f0;
+  --ap-text: #0f172a;
+  --ap-muted: #64748b;
+  --ap-accent: #0f172a;
+  --ap-up: #059669;
+  --ap-down: #dc2626;
+}
+
+[data-theme="dark"] {
+  --ap-bg: #0f172a;
+  --ap-panel: #1e293b;
+  --ap-border: #334155;
+  --ap-text: #f1f5f9;
+  --ap-muted: #94a3b8;
+}
+
+body.alpha-pro {
+  background: var(--ap-bg);
+  color: var(--ap-text);
+}
+
+.alpha-pro .layout { display:flex; gap:12px; }
+.alpha-pro .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items:start }
+.alpha-pro .left { width: 100% }
+.alpha-pro .card { background: var(--ap-panel); border: 1px solid var(--ap-border); padding: 14px; border-radius: 10px; box-shadow: 0 2px 6px rgba(2,6,23,0.03) }
+.alpha-pro h1 { margin-bottom:12px }
+.alpha-pro .right { display:flex; flex-direction:column; gap:12px }
+.alpha-pro .tools { display:flex; gap:8px; align-items:center }
+.alpha-pro textarea { width:100%; box-sizing:border-box; padding:8px }
+
+/* Header */
+.ap-header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; margin-bottom:12px }
+.ap-h-left { display:flex; align-items:center; gap:8px }
+.ap-h-left .trophy { font-size:18px }
+.ap-h-left strong { margin-right:8px }
+.ap-h-left .muted { color:var(--ap-muted); font-size:13px }
+.ap-h-left .stat { color:var(--ap-accent); font-weight:600 }
+.ap-h-right { width:40%; }
+.progress-wrap { width:100% }
+.progress-bar { height:8px; background:linear-gradient(90deg,#edf2f7,#fff); border-radius:10px; border:1px solid var(--ap-border); overflow:hidden }
+.progress-fill { height:100%; background:linear-gradient(90deg,#60a5fa,#3b82f6); width:0% }
+
+/* Left panel */
+.section-title { display:block; font-weight:700; margin-bottom:8px }
+.actions { display:flex; gap:8px; align-items:center }
+.actions .primary { background:#0f172a; color:#fff; border:0; padding:8px 12px; border-radius:8px; cursor:pointer }
+.actions button.danger { background:#fff; border:1px solid var(--ap-border); color:var(--ap-muted); padding:8px 10px; border-radius:8px }
+.actions .primary:active { transform:translateY(1px) }
+
+/* Tabs & results */
+.tabs-row { margin-bottom:8px }
+.scan-table { width:100%; border-collapse:collapse; font-size:13px }
+.scan-table th, .scan-table td { padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:left }
+.scan-table th { color:var(--ap-muted); font-weight:600 }
+.scan-results .empty { padding:28px; text-align:center; color:var(--ap-muted) }
+.sniper-badge { background: linear-gradient(90deg,#fff7ed,#fff1c2); border:1px solid #f59e0b; color:#92400e; padding:4px 10px; border-radius:12px; font-size:12px }
+
+/* Chart and traffic */
+.card-title { font-weight:700; margin-bottom:12px }
+.chart-area { min-height:320px; border:1px dashed #eef2f7; border-radius:8px; padding:8px; background:linear-gradient(180deg,#fff,#fbfdff) }
+.traffic-area { min-height:120px; display:flex; align-items:center; justify-content:center; color:var(--ap-muted) }
+.traffic-placeholder { opacity:0.5 }
+
+/* Misc */
+button { padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0; background:white; cursor:pointer }
+

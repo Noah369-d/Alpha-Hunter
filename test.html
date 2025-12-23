@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模块测试 - 全息共振系统</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .test-title {
+            color: #00ffff;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .info {
+            color: #ffff00;
+        }
+        button {
+            background: #2962ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 模块化系统测试</h1>
+    
+    <div class="test-section">
+        <div class="test-title">1. 技术指标库测试 (TA)</div>
+        <button onclick="testTA()">运行测试</button>
+        <pre id="ta-result">等待测试...</pre>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">2. 辅助函数测试 (Helpers)</div>
+        <button onclick="testHelpers()">运行测试</button>
+        <pre id="helpers-result">等待测试...</pre>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">3. 存储工具测试 (Storage)</div>
+        <button onclick="testStorage()">运行测试</button>
+        <pre id="storage-result">等待测试...</pre>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">4. 错误处理测试 (ErrorHandler)</div>
+        <button onclick="testErrorHandler()">运行测试</button>
+        <pre id="error-result">等待测试...</pre>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">5. Web Worker测试</div>
+        <button onclick="testWorker()">运行测试</button>
+        <pre id="worker-result">等待测试...</pre>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">6. API测试 (需要网络)</div>
+        <button onclick="testAPI()">运行测试</button>
+        <pre id="api-result">等待测试...</pre>
+    </div>
+
+    <script type="module">
+        import { TA } from './src/utils/ta.js';
+        import { 
+            normalizeSymbol, 
+            getMarketType, 
+            formatCompact,
+            formatCurrency 
+        } from './src/utils/helpers.js';
+        import { storage } from './src/utils/storage.js';
+        import { errorHandler, errorLogger, AppError, ErrorType, ErrorLevel } from './src/utils/errorHandler.js';
+        import { fetchStockData } from './src/utils/api.js';
+
+        // 测试数据
+        const testData = [100, 102, 101, 103, 105, 104, 106, 108, 107, 109];
+
+        // 1. 测试技术指标
+        window.testTA = function() {
+            const result = document.getElementById('ta-result');
+            try {
+                const ema = TA.EMA(testData, 5);
+                const sma = TA.SMA(testData, 5);
+                const rsi = TA.RSI(testData, 5);
+                const hhv = TA.HHV(testData, 5);
+                const llv = TA.LLV(testData, 5);
+
+                result.innerHTML = `
+<span class="success">✓ 测试通过</span>
+
+测试数据: [${testData.join(', ')}]
+
+EMA(5): [${ema.map(v => v.toFixed(2)).join(', ')}]
+SMA(5): [${sma.map(v => v.toFixed(2)).join(', ')}]
+RSI(5): [${rsi.map(v => v.toFixed(2)).join(', ')}]
+HHV(5): [${hhv.join(', ')}]
+LLV(5): [${llv.join(', ')}]
+
+<span class="info">所有指标计算正常!</span>
+                `;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 测试失败: ${error.message}</span>`;
+            }
+        };
+
+        // 2. 测试辅助函数
+        window.testHelpers = function() {
+            const result = document.getElementById('helpers-result');
+            try {
+                const tests = [
+                    { input: '700', expected: '0700.HK', fn: normalizeSymbol },
+                    { input: 'AAPL', expected: 'AAPL', fn: normalizeSymbol },
+                    { input: '600519', expected: '600519.SS', fn: normalizeSymbol },
+                    { input: '0700.HK', expected: 'HK', fn: getMarketType },
+                    { input: 'AAPL', expected: 'US', fn: getMarketType },
+                    { input: 1234567, expected: '1.2M', fn: formatCompact },
+                    { input: 123.456, expected: '123.46', fn: formatCurrency }
+                ];
+
+                let output = '<span class="success">✓ 测试通过</span>\n\n';
+                tests.forEach(test => {
+                    const actual = test.fn(test.input);
+                    const pass = actual === test.expected;
+                    output += `${pass ? '✓' : '✗'} ${test.fn.name}(${test.input}) = ${actual} ${pass ? '' : '(期望: ' + test.expected + ')'}\n`;
+                });
+
+                result.innerHTML = output;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 测试失败: ${error.message}</span>`;
+            }
+        };
+
+        // 3. 测试存储
+        window.testStorage = function() {
+            const result = document.getElementById('storage-result');
+            try {
+                // 清空测试
+                storage.clearAll();
+
+                // 自选列表测试
+                storage.addToWatchlist('AAPL');
+                storage.addToWatchlist('MSFT');
+                const watchlist = storage.getWatchlist();
+
+                // 情绪测试
+                storage.setSentiment('AAPL', 1);
+                const sentiment = storage.getSentimentMap();
+
+                // 主题测试
+                storage.setTheme('dark');
+                const theme = storage.getTheme();
+
+                result.innerHTML = `
+<span class="success">✓ 测试通过</span>
+
+自选列表: [${watchlist.join(', ')}]
+情绪标记: ${JSON.stringify(sentiment)}
+主题设置: ${theme}
+
+<span class="info">存储功能正常!</span>
+                `;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 测试失败: ${error.message}</span>`;
+            }
+        };
+
+        // 4. 测试错误处理
+        window.testErrorHandler = function() {
+            const result = document.getElementById('error-result');
+            try {
+                // 创建测试错误
+                const testError = new AppError(
+                    'This is a test error',
+                    ErrorType.VALIDATION,
+                    ErrorLevel.WARNING,
+                    { testData: 'sample' }
+                );
+
+                errorHandler.handle(testError);
+
+                const logs = errorLogger.getLogs();
+
+                result.innerHTML = `
+<span class="success">✓ 测试通过</span>
+
+错误已记录: ${logs.length} 条
+最新错误:
+  类型: ${logs[0].type}
+  级别: ${logs[0].level}
+  消息: ${logs[0].message}
+  时间: ${logs[0].timestamp}
+
+<span class="info">错误处理系统正常!</span>
+                `;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 测试失败: ${error.message}</span>`;
+            }
+        };
+
+        // 5. 测试Worker
+        window.testWorker = function() {
+            const result = document.getElementById('worker-result');
+            result.innerHTML = '<span class="info">⏳ 正在测试Worker...</span>';
+
+            try {
+                const worker = new Worker('./src/workers/indicator-worker.js');
+                
+                const testOHLC = testData.map((c, i) => ({
+                    t: Date.now() / 1000 + i * 86400,
+                    o: c - 1,
+                    h: c + 1,
+                    l: c - 2,
+                    c: c,
+                    v: 1000000
+                }));
+
+                worker.postMessage({
+                    type: 'calculate',
+                    data: testOHLC,
+                    strategy: 'Holo',
+                    symbol: 'TEST',
+                    name: 'Test Stock'
+                });
+
+                worker.onmessage = (e) => {
+                    if (e.data.success) {
+                        result.innerHTML = `
+<span class="success">✓ Worker测试通过</span>
+
+股票: ${e.data.result.symbol} (${e.data.result.name})
+价格: ${e.data.result.price.toFixed(2)}
+涨跌: ${e.data.result.change.toFixed(2)}%
+信号: ${e.data.result.activeSignal || '无'}
+操作: ${e.data.result.action}
+
+<span class="info">Worker计算正常!</span>
+                        `;
+                    } else {
+                        result.innerHTML = `<span class="error">✗ Worker返回错误: ${e.data.error}</span>`;
+                    }
+                    worker.terminate();
+                };
+
+                worker.onerror = (error) => {
+                    result.innerHTML = `<span class="error">✗ Worker错误: ${error.message}</span>`;
+                    worker.terminate();
+                };
+
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 测试失败: ${error.message}</span>`;
+            }
+        };
+
+        // 6. 测试API
+        window.testAPI = async function() {
+            const result = document.getElementById('api-result');
+            result.innerHTML = '<span class="info">⏳ 正在获取数据...</span>';
+
+            try {
+                const data = await fetchStockData('AAPL', '1d', '60d');
+                
+                if (data) {
+                    result.innerHTML = `
+<span class="success">✓ API测试通过</span>
+
+股票: ${data.symbol}
+名称: ${data.name}
+数据点: ${data.data.length}
+最新价: ${data.data[data.data.length - 1].c.toFixed(2)}
+时间范围: ${new Date(data.data[0].t * 1000).toLocaleDateString()} ~ ${new Date(data.data[data.data.length - 1].t * 1000).toLocaleDateString()}
+
+<span class="info">API连接正常!</span>
+                    `;
+                } else {
+                    result.innerHTML = '<span class="error">✗ 未获取到数据</span>';
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ API测试失败: ${error.message}</span>`;
+            }
+        };
+
+        // 页面加载完成提示
+        console.log('%c模块化系统已加载', 'color: #00ff00; font-size: 16px; font-weight: bold;');
+        console.log('点击按钮运行各项测试');
+    </script>
+</body>
+</html>

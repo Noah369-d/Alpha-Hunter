@@ -34,6 +34,11 @@ const routes = [
         component: () => import('../views/AlphaHunterPro.vue')
       },
       {
+        path: 'holo',
+        name: 'HoloResonance',
+        component: () => import('../views/HoloResonance.vue')
+      },
+      {
         path: 'risk',
         name: 'Risk',
         component: () => import('../views/Risk.vue')

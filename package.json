@@ -1,0 +1,23 @@
+{
+  "name": "holoresonance-trading-system",
+  "version": "10.0.0",
+  "description": "全息共振交易系统 - 模块化版本",
+  "type": "module",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "serve": "npx serve -p 8000",
+    "lint": "eslint src/**/*.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "trading",
+    "stock",
+    "technical-analysis",
+    "vue3",
+    "web-worker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

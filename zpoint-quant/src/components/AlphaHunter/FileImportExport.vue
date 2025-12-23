@@ -2,8 +2,8 @@
   <div class="file-import">
     <input type="file" ref="file" @change="onFile" style="display:none" accept=".txt,.csv" />
     <div class="actions">
-      <button @click="$refs.file.click()">导入</button>
-      <button @click="$emit('export')">导出</button>
+      <button class="import" @click="$refs.file.click()">📁 导入股票池</button>
+      <button class="csv" @click="$emit('export')">导出CSV</button>
     </div>
   </div>
 </template>
@@ -26,5 +26,7 @@ export default {
 
 <style scoped>
 .actions { display:flex; gap:8px; }
-button { padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0; background: white; cursor:pointer }
+button { padding:6px 10px; border-radius:8px; border:1px solid var(--ap-border); background: white; cursor:pointer }
+button.import { background:#fff; color:var(--ap-accent); font-weight:600 }
+button.csv { background:#fff; color:var(--ap-muted) }
 </style>

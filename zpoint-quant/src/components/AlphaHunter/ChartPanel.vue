@@ -8,15 +8,23 @@
 <script>
 export default {
   name: 'ChartPanel',
-  props: { canvasRef: { type: String, default: 'chart' } },
+  props: { canvasRef: { type: String, default: 'chart' }, series: { type: Array, default: () => [] } },
   mounted() {
-    // minimal placeholder - actual charting can be added later
+    // try to dynamically load lightweight-charts in browser builds
     const c = this.$refs[this.canvasRef];
-    if (c && c.getContext) {
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(0, 0, c.width, c.height);
+    if (this.series && this.series.length > 0) {
+      // attempt dynamic import; if not available we fall back to canvas placeholder
+      import('lightweight-charts').then(({ createChart }) => {
+        const chart = createChart(c, { width: c.clientWidth || 600, height: 240, layout: { backgroundColor: '#fff' } });
+        const line = chart.addLineSeries();
+        line.setData(this.series.map((p, i) => ({ time: i, value: p })))
+      }).catch(() => { this._drawPlaceholder(c) })
+    } else {
+      this._drawPlaceholder(c)
     }
+  },
+  methods: {
+    _drawPlaceholder(c){ if (c && c.getContext) { const ctx = c.getContext('2d'); ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0, 0, c.width || 600, c.height || 240) } }
   }
 }
 </script>
