@@ -1,33 +1,35 @@
 ## 目的
 为来访的 AI 编码代理提供快速上手参考：代码库的整体架构、关键工作流、约定与常见陷阱，和可直接运行的示例命令。
 
-## 大局观（为什么这样组织）
-- 前端单页应用：Vue 3 + Pinia；界面与路由在 `src/views`/`src/components`，应用入口在 `src/main.js`。
-- 核心域逻辑放在 `src/utils`（回测、指标、市场数据、信号、风险、策略管理），这些模块被视为“无 UI 的业务逻辑层”，适合单元 & 属性测试。
-- 异步/外部依赖通过适配器封装（例如 `MarketDataAdapter` 使用 yfinance），并在内部统一错误模型与重试策略。
-- 持久化使用 IndexedDB（通过 `CacheManager`）与 LocalStorage；测试使用 `fake-indexeddb` 模拟。测试入口与全局 mock 在 `src/test/setup.js`。
+## 快速概览
+- 前端：Vue 3 + Pinia（入口 `src/main.js`，页面在 `src/views/`，组件在 `src/components/`）。
+- 业务/域逻辑：集中在 `src/utils/`（Backtest、Indicators、MarketData、Signal、Cache），这些模块为“无 UI 的域逻辑”，以单元 + 属性测试为规范。
+- 网络/外部：由适配器封装（`MarketDataAdapter.js`），统一错误与重试策略；缓存使用 `CacheManager.js`（IndexedDB + LRU + TTL）。
+- 测试：Vitest + fast-check（property tests），测试全局 mock 在 `src/test/setup.js`（`fake-indexeddb`、`LocalStorageMock`）。
 
-## 关键文件（快速定位行为与约定）
-- 回测与策略执行：`src/utils/BacktestEngine.js`（策略以字符串形式编译为 `onBar` 函数）
-- 市场数据与网络：`src/utils/MarketDataAdapter.js`（fetch、重试/退避、yfinance 格式化）
-- 缓存层：`src/utils/CacheManager.js`（IndexedDB + LRU + TTL）
-- 信号生成（TODO / 测试规范）：`src/utils/SignalGenerator.js`（测试位于 `src/utils/SignalGenerator.test.js`，测试即规范）
-- 测试 setup：`src/test/setup.js`（全局 jsdom、fake-indexeddb、LocalStorageMock、createMockMarketData）
+## 必读文件（优先打开）
+- `src/utils/BacktestEngine.js` — 策略通过 `new Function('data','indicators','state', code)` 编译并运行（务必测试异常、边界和返回值）。
+- `src/utils/MarketDataAdapter.js` — 网络层：yfinance 调用、`createError(code,message,context)`、`retryWithBackoff(fn, ctx)`、默认超时 10s。注意：429／500 标记为 `retryable`。示例：`createError('RATE_LIMIT', ..., { retryable: true })`。
+- `src/utils/CacheManager.js` — IndexedDB + LRU + TTL，常用方法：`generateKey(symbol,interval,start,end)`、`get/set/cleanExpired/evictIfNeeded`。
+- `src/utils/SignalGenerator.js` + `src/utils/SignalGenerator.test.js` — 当前为重点修复目标（见项目文档与测试中的 `describe.skip`）。
+- `src/test/setup.js` — 全局测试 mocks（`fake-indexeddb` 和 `LocalStorageMock`），请复用其中的 helper：`createMockMarketData`、`createMockStrategy`。
 
 ## 项目特有的开发 & 测试工作流
-- 运行开发服务器：`npm run dev`（Vite）
-- 运行所有测试：`npm run test:run` 或交互式菜单 `run-tests.bat`
-- 单元测试：`npm run test:unit`；属性测试（fast-check）：`npm run test:property`（测试约定：文件名含 `Property` 或 `.property.test.js`）
-  - 注意：某些 Vitest 版本可能不支持 `--grep` 参数（会导致 CLI 报错），遇到此类错误时可直接运行 `npm run test`、使用 `npx vitest run`，或更新本地 Vitest 版本。
-- 测试 UI：`npm run test:ui`；覆盖率：`npm run coverage`（报告输出到 `coverage/` 并可用 `coverage/index.html` 打开）
-- 在 Windows 上有多种便捷批处理脚本（例如 `run-tests.bat`, `fix-and-test.bat`, `install-fake-indexeddb.bat`），优先使用它们可以复现仓库维护者的检查流程。
+- 本地开发：`npm run dev`（Vite）
+- 单元测试：`npm run test:unit`（默认排除 `.property.test.js`）
+- 属性测试：`npm run test:property`（内部使用 `vitest run -t Property` —— 请用此命令而不是依赖 `--grep`）
+- 运行所有测试（CI 风格）：`npm run test:run` 或使用 `run-tests.bat`（Windows 下优先使用仓库提供的批处理脚本以复现维护者环境）
+- UI 测试与覆盖率：`npm run test:ui` / `npm run coverage`（查看 `coverage/index.html`）
+- E2E：`npx playwright test`（E2E 测试位于 `e2e/*.spec.js`，Playwright 配置在 `playwright.config.js`）
+- 常用 Windows 脚本：`run-tests.bat`, `run-all-tests.bat`, `fix-and-test.bat`, `install-fake-indexeddb.bat`。
 
 ## 约定与模式（必须遵守的、可做参考的）
-- 测试是规格：很多未实现或跳过的行为直接在 `.test.js` 里定义（例如 `SignalGenerator.test.js`），以测试为准。
-- 错误对象：使用 `createError(code, message, context)` 风格，错误对象包含 `.code`、`.context` 和 `.retryable` 字段；请按此格式抛错以便上层统一处理。
-- 外部请求需防护：所有外部调用应有超时、可识别错误码、并通过 `retryWithBackoff` 或等价机制重试。
-- IndexedDB / LocalStorage：测试套件依赖 `src/test/setup.js` 提供的全局 mock（`fake-indexeddb` / `LocalStorageMock`），新增涉及这些存储的测试前请检查并复用 setup。
-- 策略代码动态执行：策略对象内的 `code` 字段会被 `new Function()` 编译并运行（例如 `onBar` / `onSignal`），请对输入/输出及异常处理写入覆盖测试。
+- 测试是规格：很多未实现或跳过的行为在测试中声明（例：`SignalGenerator.test.js` 常含 `describe.skip`）。以测试为准，修复后移除 skip 并回归测试。
+- 错误对象：使用 `createError(code, message, context)`；标准字段：`.code`、`.context`、`.timestamp`、`.retryable`（布尔）。示例：
+  - `createError('RATE_LIMIT','API rate limit',{symbol, retryable: true})`
+- 重试/退避：`retryWithBackoff(fn, ctx)` 使用指数退避（见 `MarketDataAdapter`）；函数会根据 `error.retryable` 或特定 codes (`NETWORK_ERROR`, `RATE_LIMIT`, `SERVER_ERROR`) 决定是否重试。
+- 动态策略安全：策略 `code` 字段通过 `new Function` 运行（见 `BacktestEngine`），务必在单元测试中覆盖不良输入、异常抛出和返回值约束。
+- 存储 mock：测试依赖 `fake-indexeddb` 和 `LocalStorageMock`（`src/test/setup.js`），新增缓存/DB 相关测试前请复用此 setup。
 
 ## 示例任务（如何快速动手）
 - 修复或实现 `SignalGenerator`：参照 `src/utils/SignalGenerator.test.js` 编写实现，使所有测试通过；注意 `describe.skip` 表示这些测试目前被跳过，先把跳过移除再运行 `npm run test:unit`。
