@@ -199,6 +199,40 @@ describe('StrategyManager', () => {
       expect(loaded.name).toBe(strategy.name)
     })
 
+    test('should isolate storage when using storageSuffix', async () => {
+      const code = 'function onBar() { return null }'
+
+      const a = new StrategyManager({ storageSuffix: 'A' })
+      await a.clearAll()
+      const sA = a.createStrategy('A', code)
+      await a.saveStrategy(sA)
+
+      const b = new StrategyManager({ storageSuffix: 'B' })
+      await b.clearAll()
+      const sB = b.createStrategy('B', code)
+      await b.saveStrategy(sB)
+
+      const listA = await a.listStrategies()
+      const listB = await b.listStrategies()
+
+      expect(listA.length).toBe(1)
+      expect(listB.length).toBe(1)
+      expect(listA[0].name).toBe('A')
+      expect(listB[0].name).toBe('B')
+    })
+
+    test('default managers share storage', async () => {
+      const code = 'function onBar() { return null }'
+      const m1 = new StrategyManager()
+      await m1.clearAll()
+      const s = m1.createStrategy('Shared', code)
+      await m1.saveStrategy(s)
+
+      const m2 = new StrategyManager()
+      const loaded = await m2.loadStrategy(s.id)
+      expect(loaded.name).toBe('Shared')
+    })
+
     test('should throw error when loading non-existent strategy', async () => {
       await expect(manager.loadStrategy('non-existent-id')).rejects.toThrow('Strategy not found')
     })

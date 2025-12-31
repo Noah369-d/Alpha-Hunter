@@ -10,10 +10,13 @@
  */
 
 class StrategyManager {
-  constructor() {
+  constructor(options = {}) {
+    // 支持可选的实例后缀以隔离多个并发测试实例
+    const suffix = options.storageSuffix ? `_${options.storageSuffix}` : ''
+
     // 使用LocalStorage作为持久化存储
-    this.storageKey = 'zpoint_quant_strategies'
-    this.activeStrategyKey = 'zpoint_quant_active_strategies'
+    this.storageKey = `zpoint_quant_strategies${suffix}`
+    this.activeStrategyKey = `zpoint_quant_active_strategies${suffix}`
     
     // 内存中的策略缓存
     this.strategies = new Map()

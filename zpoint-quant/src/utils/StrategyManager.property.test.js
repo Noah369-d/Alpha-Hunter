@@ -12,8 +12,11 @@ import StrategyManager from './StrategyManager.js'
 describe('StrategyManager - Property-Based Tests', () => {
   let manager
 
+  // Helper to create isolated manager instances (avoid cross-test LocalStorage interference)
+  const newIsolatedManager = () => new StrategyManager({ storageSuffix: `${Date.now()}_${Math.random().toString(36).slice(2)}` })
+
   beforeEach(async () => {
-    manager = new StrategyManager()
+    manager = newIsolatedManager()
     // 清空所有策略 - 确保每个测试都有干净的状态
     await manager.clearAll()
   })
@@ -47,8 +50,8 @@ describe('StrategyManager - Property-Based Tests', () => {
             })
           }),
           async (strategyData) => {
-            // 为每个属性测试创建独立的 manager 实例
-            const testManager = new StrategyManager()
+            // 为每个属性测试创建独立的隔离 manager 实例
+            const testManager = newIsolatedManager()
             await testManager.clearAll()
 
             try {
@@ -132,8 +135,8 @@ describe('StrategyManager - Property-Based Tests', () => {
             { minLength: 1, maxLength: 10 }
           ),
           async (strategiesData) => {
-            // 为每个属性测试创建独立的 manager 实例
-            const testManager = new StrategyManager()
+            // 为每个属性测试创建独立的隔离 manager 实例
+            const testManager = newIsolatedManager()
             await testManager.clearAll()
 
             try {
@@ -346,8 +349,8 @@ describe('StrategyManager - Property-Based Tests', () => {
             code: fc.constant('function onBar() { return null }')
           }),
           async (strategyData) => {
-            // 为每个属性测试创建独立的 manager 实例
-            const testManager = new StrategyManager()
+            // 为每个属性测试创建独立的隔离 manager 实例
+            const testManager = newIsolatedManager()
             await testManager.clearAll()
 
             try {
@@ -388,8 +391,8 @@ describe('StrategyManager - Property-Based Tests', () => {
             newName: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0).filter(s => /[A-Za-z0-9]/.test(s))
           }),
           async (data) => {
-            // 为每个属性测试创建独立的 manager 实例
-            const testManager = new StrategyManager()
+            // 为每个属性测试创建独立的隔离 manager 实例
+            const testManager = newIsolatedManager()
             await testManager.clearAll()
 
             try {
@@ -428,8 +431,8 @@ describe('StrategyManager - Property-Based Tests', () => {
             code: fc.constant('function onBar() { return null }')
           }),
           async (strategyData) => {
-            // 为每个属性测试创建独立的 manager 实例
-            const testManager = new StrategyManager()
+            // 为每个属性测试创建独立的隔离 manager 实例
+            const testManager = newIsolatedManager()
             await testManager.clearAll()
 
             try {
@@ -468,8 +471,8 @@ describe('StrategyManager - Property-Based Tests', () => {
             copyName: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0).filter(s => /[A-Za-z0-9]/.test(s))
           }),
           async (data) => {
-            // 为每个属性测试创建独立的 manager 实例
-            const testManager = new StrategyManager()
+            // 为每个属性测试创建独立的隔离 manager 实例
+            const testManager = newIsolatedManager()
             await testManager.clearAll()
 
             try {
