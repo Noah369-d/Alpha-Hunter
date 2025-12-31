@@ -84,6 +84,27 @@ zpoint-quant/
 - [设计文档](.kiro/specs/zpoint-quant/design.md)
 - [任务列表](.kiro/specs/zpoint-quant/tasks.md)
 
+---
+
+## 维护 & 归档策略 📦
+
+为保持仓库整洁并避免测试噪声，我们采用保守的“归档”策略：
+
+- 过时或重复的脚本、示例、演示和临时 repro 测试会被移动到 `archive/` 目录（而非直接删除）。
+- 对归档测试文件：通过将后缀由 `.test.js` 重命名为 `.test.js.disabled` 来**临时禁用**，以便保留历史但不被 Vitest 自动运行。
+- 归档目录结构建议：
+  - `archive/scripts/` — 过时的运行/安装脚本
+  - `archive/docs/` — 合并后的旧文档或历史参考稿
+  - `archive/demos/` — 老的 HTML 预览/演示文件
+  - `archive/tools/` — 小工具与临时修复脚本
+  - `archive/tests-repro/` — 临时的 reproducer 测试（迁移后改名禁用）
+- 恢复流程：若需要恢复某个文件，从 `archive/` 移回并恢复文件名（或打开 PR 恢复并添加说明），并运行 `npm run test:unit` 与 `npm run test:property` 验证。
+- 删除准则：归档后 90 天内未被引用或恢复且没有正当保留理由，可考虑在发出通知后永久删除（需在 PR 中列出并获得维护者审批）。
+
+请在 PR 描述中记录 **为何** 要归档、移动的具体文件列表以及运行的测试结果（见本次 PR 示例）。
+
+---
+
 ## 许可证
 
 MIT
