@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全息共振 V9.0 - 股票分组增强版</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <style>
+        [v-cloak] { display: none !important; }
+        
+        /* --- CSS 变量定义 --- */
+        :root {
+            /* 夜间模式 (默认) */
+            --bg-root: #131722;
+            --bg-panel: #1e222d;
+            --bg-input: #000000;
+            --bg-hover: #2a2e39;
+            --border-color: #2a2e39;
+            --text-primary: #d1d4dc;
+            --text-secondary: #787b86;
+            --accent-blue: #2962ff;
+            --accent-purple: #b481ff;
+            --chart-up: #089981;
+            --chart-down: #f23645;
+            --grid-line: #2a2e39;
+        }
+
+        /* 日间模式 */
+        [data-theme="light"] {
+            --bg-root: #f0f3fa;
+            --bg-panel: #ffffff;
+            --bg-input: #f1f3f6;
+            --bg-hover: #e2e6f0;
+            --border-color: #d1d5db;
+            --text-primary: #131722;
+            --text-secondary: #5d606b;
+            --accent-blue: #2962ff;
+            --accent-purple: #9c27b0;
+            --chart-up: #00897b;
+            --chart-down: #d32f2f;
+            --grid-line: #e6e9f0;
+        }
+
+        body { background-color: var(--bg-root); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; transition: all 0.3s ease; }
+        
+        /* 通用组件样式 */
+        .card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 4px; transition: background-color 0.3s, border-color 0.3s; }
+        
+        .btn { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-blue { background: var(--accent-blue); color: white; } .btn-blue:hover { opacity: 0.9; }
+        .btn-purple { background: var(--accent-purple); color: white; } .btn-purple:hover { opacity: 0.9; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); } .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .btn-active { background: var(--bg-hover); color: var(--accent-blue); border-color: var(--accent-blue); }
+        
+        .input-std { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 4px 8px; font-size: 12px; border-radius: 4px; outline: none; width: 100%; transition: 0.2s; }
+        .input-std:focus { border-color: var(--accent-blue); }
+
+        /* 分组按钮样式 (新增) */
+        .group-tab { flex: 1; text-align: center; font-size: 10px; padding: 3px 0; cursor: pointer; color: var(--text-secondary); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .group-tab:hover { background-color: var(--bg-hover); color: var(--text-primary); }
+        .group-tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); font-weight: bold; background-color: rgba(41, 98, 255, 0.1); }
+
+        /* 文本颜色 */
+        .text-up { color: var(--chart-up); } .text-down { color: var(--chart-down); } .text-warn { color: #fcc02e; }
+        .text-blue-signal { color: var(--accent-blue); } .text-pivot { color: #ff9800; } .text-super { color: #ff00ff; text-shadow: 0 0 5px rgba(255, 0, 255, 0.4); }
+        .text-resonance { color: var(--accent-purple); font-weight: 800; }
+
+        /* 标签与胶囊 */
+        .signal-tag { padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: bold; margin-right: 3px; display: inline-block; border: 1px solid transparent; }
+        .bg-buy { background-color: rgba(8, 153, 129, 0.15); color: var(--chart-up); border-color: var(--chart-up); }
+        .bg-acc { background-color: rgba(252, 192, 46, 0.15); color: #fcc02e; border-color: #fcc02e; }
+        .bg-sell { background-color: rgba(242, 54, 69, 0.15); color: var(--chart-down); border-color: var(--chart-down); }
+        .bg-pivot { background-color: rgba(255, 152, 0, 0.15); color: #ff9800; border-color: #ff9800; }
+        .bg-res { background-color: rgba(180, 129, 255, 0.15); color: var(--accent-purple); border-color: var(--accent-purple); }
+        
+        .trend-pill { font-size: 9px; padding: 1px 4px; border-radius: 2px; min-width: 14px; text-align: center; }
+        .trend-up { background: var(--chart-up); color: #fff; font-weight: bold; }
+        .trend-bear { background: #5d606b; color: #fff; } 
+
+        /* 工具栏与列表 */
+        .drawing-tools { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); z-index: 30; display: flex; flex-direction: column; gap: 6px; background: var(--bg-panel); padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+        .tool-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-size: 16px; }
+        .tool-btn:hover { background: var(--bg-hover); color: var(--text-primary); } .tool-btn.active { background: var(--accent-blue); color: #fff; }
+        .tool-divider { height: 1px; background: var(--border-color); margin: 2px 4px; }
+
+        .sortable { cursor: pointer; user-select: none; transition: color 0.2s; } .sortable:hover { color: var(--text-primary); }
+        .sentiment-btn { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--text-secondary); display: inline-block; cursor: pointer; margin-right: 4px; }
+        .sent-bull { background-color: var(--chart-up); border-color: var(--chart-up); } .sent-bear { background-color: var(--chart-down); border-color: var(--chart-down); } .sent-flat { background-color: #fcc02e; border-color: #fcc02e; }
+        
+        .news-link { display: block; padding: 6px 0; border-bottom: 1px solid var(--border-color); text-decoration: none; transition: 0.2s; }
+        .news-link:hover .news-title { color: var(--accent-blue); }
+        .news-title { font-size: 11px; color: var(--text-primary); line-height: 1.4; display: block; margin-bottom: 2px; }
+        .news-meta { font-size: 9px; color: var(--text-secondary); }
+
+        .chart-legend { position: absolute; top: 10px; left: 10px; z-index: 20; background: var(--bg-panel); opacity: 0.9; backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); pointer-events: none; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* 资产表格 */
+        .asset-row { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr 1fr; gap: 4px; font-size: 10px; padding: 6px 0; border-bottom: 1px solid var(--border-color); color: var(--text-primary); align-items: center; }
+        .asset-header { font-weight: bold; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+        .tab-btn { flex: 1; text-align: center; padding: 6px; font-size: 11px; cursor: pointer; color: var(--text-secondary); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); font-weight: bold; background-color: var(--bg-hover); }
+
+        /* 滚动条适配 */
+        ::-webkit-scrollbar { width: 5px; height: 5px; } ::-webkit-scrollbar-track { background: var(--bg-root); } ::-webkit-scrollbar-thumb { background: #505663; border-radius: 3px; }
+
+        /* 警报动画 */
+        @keyframes flash-red { 0%,100% { background-color: transparent; } 50% { background-color: rgba(242, 54, 69, 0.2); } }
+        @keyframes flash-green { 0%,100% { background-color: transparent; } 50% { background-color: rgba(8, 153, 129, 0.2); } }
+        .alert-sl { animation: flash-red 1s infinite; border: 1px solid var(--chart-down) !important; }
+        .alert-tp { animation: flash-green 1s infinite; border: 1px solid var(--chart-up) !important; }
+    </style>
+</head>
+<body :data-theme="isDark ? 'dark' : 'light'">
+
+<div id="app" v-cloak class="h-screen w-screen flex flex-col p-2 box-border">
+    <!-- 顶部工具栏 -->
+    <div class="flex justify-between items-center mb-2 px-1 flex-none">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                HoloResonance <span class="text-xs text-[var(--text-secondary)] font-normal">V9.0 Grouping</span>
+            </h1>
+            <!-- 周期切换 -->
+            <div class="flex bg-[var(--bg-panel)] rounded p-1 gap-1 border border-[var(--border-color)]">
+                <button v-for="p in ['15m','1h','4h','1d','1wk']" @click="changePeriod(p)" 
+                    :class="['btn', period===p?'btn-active':'btn-ghost']">{{ p.toUpperCase() }}</button>
+            </div>
+            
+            <div class="flex gap-2 text-xs ml-4 items-center">
+                <button @click="toggleTheme" class="btn btn-ghost" :title="isDark ? '切换至日间模式' : '切换至夜间模式'">
+                    {{ isDark ? '☀ 日间' : '🌙 夜间' }}
+                </button>
+                <button @click="openComparisonWindow" class="btn btn-purple gap-1 shadow-lg shadow-purple-500/20">📊 对比</button>
+                <span class="text-[var(--text-secondary)]">|</span>
+                
+                <button @click="exportData" class="text-green-400 hover:text-green-500 transition cursor-pointer flex items-center gap-1">💾 导出</button>
+                <button @click="$refs.fileInput.click()" class="text-orange-400 hover:text-orange-500 transition cursor-pointer flex items-center gap-1">📂 导入</button>
+                <input type="file" ref="fileInput" @change="importData" style="display: none;" accept=".json">
+                
+                <span class="text-[var(--text-secondary)]">|</span>
+                <button @click="loadWatchlist" class="text-yellow-400 font-bold border border-yellow-600/30 px-2 py-1 rounded hover:bg-yellow-500/10 transition">★ 自选</button>
+                <button @click="loadList('SPY')" class="text-blue-400 hover:text-blue-500 transition cursor-pointer">🇺🇸 SPY</button>
+                <button @click="loadList('HSI')" class="text-teal-400 hover:text-teal-500 transition cursor-pointer">🇭🇰 恒指</button>
+                <button @click="loadList('CSI')" class="text-red-400 hover:text-red-500 transition cursor-pointer">🇨🇳 沪深</button>
+            </div>
+        </div>
+        
+        <div class="flex gap-2 items-center">
+            <span v-if="autoRefreshCount > 0" class="text-[9px] text-[var(--text-secondary)] font-mono" title="自动刷新倒计时">↻ {{ Math.floor(autoRefreshCount/60) }}m</span>
+            <input v-model="inputSymbols" @keyup.enter="runScanner(false)" type="text" class="input-std w-48" placeholder="输入代码 (如: 700)...">
+            <button @click="runScanner(false)" :disabled="loading" class="btn btn-blue w-24 font-mono">
+                {{ loading ? progress : '扫描' }}
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-1 gap-2 overflow-hidden">
+        <!-- 左侧：股票列表 -->
+        <div class="w-80 flex flex-col gap-2 flex-none">
+            <div class="card flex-1 overflow-hidden flex flex-col">
+                <!-- 列表头 + 搜索 -->
+                <div class="p-2 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-panel)] flex-none gap-2">
+                    <div class="flex items-center gap-1">
+                        <span class="font-bold text-xs text-[var(--text-secondary)]">
+                            列表 ({{ sortedStocks.length }}/{{ stocks.length }})
+                        </span>
+                        <span v-if="loading" class="text-[10px] text-blue-400 animate-pulse">更新中...</span>
+                    </div>
+                    <input v-model="listFilter" class="input-std w-24 text-[10px] py-0.5 px-2 h-5" placeholder="🔍 列表筛选..." title="在当前列表中筛选代码或名称">
+                </div>
+
+                <!-- 新增：分组筛选栏 -->
+                <div class="flex gap-1 px-2 py-1 bg-[var(--bg-root)] border-b border-[var(--border-color)]">
+                    <div @click="activeGroup='ALL'" :class="['group-tab', activeGroup==='ALL'?'active':'']">全部</div>
+                    <div @click="activeGroup='US'" :class="['group-tab', activeGroup==='US'?'active':'']">美股</div>
+                    <div @click="activeGroup='HK'" :class="['group-tab', activeGroup==='HK'?'active':'']">港股</div>
+                    <div @click="activeGroup='CN'" :class="['group-tab', activeGroup==='CN'?'active':'']">A股</div>
+                </div>
+                
+                <!-- 排序头 -->
+                <div class="flex text-[10px] text-[var(--text-secondary)] px-2 py-1 bg-[var(--bg-panel)] border-b border-[var(--border-color)]">
+                    <div class="w-10 text-center">研判</div>
+                    <div class="w-16 sortable" @click="sortBy('symbol')">代码 <span class="text-[8px]">{{getSortIcon('symbol')}}</span></div>
+                    <div class="w-14 text-right sortable" @click="sortBy('change')">涨跌 <span class="text-[8px]">{{getSortIcon('change')}}</span></div>
+                    <div class="w-16 text-center">趋势(S/L)</div>
+                    <div class="flex-1 text-right">信号</div>
+                </div>
+
+                <!-- 列表内容 -->
+                <div class="overflow-y-auto flex-1 relative">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <tbody>
+                            <tr v-for="stock in sortedStocks" :key="stock.symbol" @click="selectStock(stock)"
+                                :class="['border-b border-[var(--border-color)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors', currentStock?.symbol === stock.symbol ? 'bg-[var(--bg-hover)] border-l-2 border-l-blue-500' : '']">
+                                <td class="p-2 w-10 text-center">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <span @click.stop="toggleWatchlist(stock.symbol)" :class="['btn-star', isWatchlisted(stock.symbol) ? 'active' : '']">★</span>
+                                        <span @click.stop="toggleSentiment(stock.symbol)" :class="['sentiment-btn', getSentimentClass(stock.symbol)]"></span>
+                                    </div>
+                                </td>
+                                <td class="p-2 w-16">
+                                    <div class="font-bold text-[var(--text-main)]">{{ stock.symbol }}</div>
+                                    <div class="text-[9px] text-[var(--text-secondary)] truncate w-16" :title="stock.name">{{ stock.name }}</div>
+                                </td>
+                                <td class="p-2 text-right w-14">
+                                    <div :class="stock.change >= 0 ? 'text-up' : 'text-down'">{{ stock.price.toFixed(2) }}</div>
+                                    <div :class="['text-[9px]', stock.change >= 0 ? 'text-up' : 'text-down']">{{ stock.change >= 0 ? '+' : ''}}{{ stock.change.toFixed(2) }}%</div>
+                                </td>
+                                <td class="p-2 text-center w-16">
+                                    <div class="flex gap-1 justify-center">
+                                        <span :class="['trend-pill', stock.trendShort==='Bull'?'trend-up':'trend-bear']">S</span>
+                                        <span :class="['trend-pill', stock.trendLong==='Bull'?'trend-up':'trend-bear']">L</span>
+                                    </div>
+                                </td>
+                                <td class="p-2 text-right">
+                                    <span v-if="stock.signals.superBottom" class="signal-tag bg-buy">★爆点</span>
+                                    <span v-else-if="stock.signals.resonanceSignal" class="signal-tag bg-res">★共振</span>
+                                    <span v-else-if="stock.signals.pivotSignal" class="signal-tag bg-pivot">★转折</span>
+                                    <span v-else-if="stock.subSignals.actualBuy" class="signal-tag bg-buy">★买点</span>
+                                    <span v-else-if="stock.subSignals.isYellow" class="signal-tag bg-acc">加速</span>
+                                    <span v-else-if="stock.signals.escape" class="signal-tag bg-sell">逃跑</span>
+                                    <span v-else class="text-[var(--text-secondary)]">-</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-if="sortedStocks.length === 0 && stocks.length > 0" class="text-center p-4 text-[var(--text-secondary)] text-xs">
+                        无匹配结果
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间：图表 -->
+        <div class="flex-1 flex flex-col gap-2 min-w-0">
+            <div class="card flex-1 p-1 relative flex flex-col overflow-hidden group bg-[var(--bg-root)]">
+                <div class="drawing-tools opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div @click="setTool('cursor')" :class="['tool-btn', activeTool==='cursor'?'active':'']" title="浏览"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg></div>
+                    <div @click="setTool('hline')" :class="['tool-btn', activeTool==='hline'?'active':'']" title="水平线"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/></svg></div>
+                    <div @click="setTool('trend')" :class="['tool-btn', activeTool==='trend'?'active':'']" title="趋势线"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="21" x2="3" y2="3"/></svg></div>
+                    <div class="tool-divider"></div>
+                    <div @click="clearDrawings" class="tool-btn hover:text-red-500" title="清除绘图"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+                </div>
+                <div id="tv-chart-container" class="w-full h-full cursor-crosshair"></div>
+                <div v-if="currentStock" class="chart-legend">
+                    <div class="flex items-center gap-2 text-xs font-mono text-[var(--text-sub)]">
+                        <span class="text-[var(--text-main)] font-bold text-sm mr-1">{{ currentStock.name }}</span>
+                        <span>Data: <span class="text-blue-400">{{ currentStock.lastUpdated }}</span></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 底部功能区 -->
+            <div class="card h-52 flex overflow-hidden">
+                <!-- 1. 日志 & 轨道罗盘 -->
+                <div class="flex-1 flex flex-col border-r border-[var(--border-color)] min-w-[200px]">
+                    <div class="px-3 py-2 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-root)]">
+                        <span class="text-xs text-[var(--text-secondary)] font-mono">SYSTEM LOG</span>
+                        <span v-if="currentStock" :class="['font-bold text-xs', getActionColor(currentStock.action)]">策略({{period}}): [ {{ currentStock.action }} ]</span>
+                    </div>
+                    <div class="flex-1 p-3 overflow-y-auto font-mono text-xs bg-[var(--bg-root)] space-y-2">
+                        <div v-if="currentStock">
+                            <div v-if="alertState.triggered" class="mb-2 p-2 rounded border font-bold animate-pulse bg-red-900/50 border-red-500 text-red-400">⚠️ {{ alertState.message }}</div>
+                            
+                            <!-- 轨道罗盘 -->
+                            <div class="grid grid-cols-2 gap-2 mb-2 p-2 bg-[var(--bg-panel)] rounded border border-[var(--border-color)]">
+                                <div>
+                                    <div class="text-[9px] text-[#2962ff] font-bold">快轨 (BLUE)</div>
+                                    <div :class="currentStock.price > currentStock.indicators.A_SH[currentStock.indicators.A_SH.length-1] ? 'text-up' : (currentStock.price < currentStock.indicators.B_SH[currentStock.indicators.B_SH.length-1] ? 'text-down' : 'text-warn')">
+                                        {{ currentStock.price > currentStock.indicators.A_SH[currentStock.indicators.A_SH.length-1] ? '↑ 站稳上轨' : (currentStock.price < currentStock.indicators.B_SH[currentStock.indicators.B_SH.length-1] ? '↓ 跌破下轨' : '→ 震荡整理') }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] text-[#fcc02e] font-bold">慢轨 (GOLD)</div>
+                                    <div :class="currentStock.price > currentStock.indicators.A_LG[currentStock.indicators.A_LG.length-1] ? 'text-up' : (currentStock.price < currentStock.indicators.B_LG[currentStock.indicators.B_LG.length-1] ? 'text-down' : 'text-[var(--text-secondary)]')">
+                                        {{ currentStock.price > currentStock.indicators.A_LG[currentStock.indicators.A_LG.length-1] ? '↑ 长牛趋势' : (currentStock.price < currentStock.indicators.B_LG[currentStock.indicators.B_LG.length-1] ? '↓ 长熊压制' : '→ 趋势不明') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 详细策略逻辑 -->
+                            <div class="pl-2 border-l-2 border-gray-500/30 space-y-1 leading-relaxed">
+                                <div class="text-[var(--text-secondary)] mb-1 opacity-70">=== 周期: {{periodName}} 策略执行 ===</div>
+                                <div v-if="currentStock.action === '共振买入'" class="text-purple-500">🚀 [共振]: W底结构+资金流入。SOP: 40%底仓，设前低止损。</div>
+                                <div v-else-if="currentStock.action === '重仓爆点'" class="text-super">★ [爆点]: 底背离+倍量。SOP: 60%仓位，激进追涨。</div>
+                                <div v-else-if="currentStock.action === '极点转折'" class="text-pivot">★ [转折]: 动能衰竭(黄转红)。SOP: 左侧试错单，止损极窄。</div>
+                                <div v-else-if="currentStock.action === '买入'" class="text-up">● [买入]: 机构底确认。SOP: 分批建仓，防守通道下轨。</div>
+                                <div v-else-if="currentStock.action === '加速'" class="text-warn">⚡ [持仓]: 资金加速。SOP: 拿住主升浪，不破蓝线不走。</div>
+                                <div v-else-if="currentStock.action === '逃跑'" class="text-down">!!! [卖出]: 顶背离/破位。SOP: 清仓离场，保护利润。</div>
+                                <div v-else-if="currentStock.action === '观望'" class="text-[var(--text-secondary)]">○ [观望]: 无明确信号。SOP: 空仓等待，多看少动。</div>
+                            </div>
+                        </div>
+                        <div v-else class="text-[var(--text-secondary)] h-full flex items-center justify-center">等待指令...</div>
+                    </div>
+                </div>
+
+                <!-- 2. 资讯 (RSS) -->
+                <div class.... [TRUNCATED DUE TO LENGTH]

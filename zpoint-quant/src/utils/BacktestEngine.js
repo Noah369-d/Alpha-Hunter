@@ -300,9 +300,11 @@ class BacktestEngine {
       ? Math.pow(1 + totalReturn, 1 / yearsElapsed) - 1 
       : 0
 
-    // 计算胜率和盈亏比
-    const winningTrades = trades.filter(t => (t.profit || 0) > 0)
-    const losingTrades = trades.filter(t => (t.profit || 0) < 0)
+    // 计算胜率和盈亏比（使用小阈值过滤零利润的平手交易）
+    const EPS = 1e-8
+    const winningTrades = trades.filter(t => (t.profit || 0) > EPS)
+    const losingTrades = trades.filter(t => (t.profit || 0) < -EPS)
+    const neutralTrades = trades.filter(t => Math.abs(t.profit || 0) <= EPS)
     const winRate = trades.length > 0 ? winningTrades.length / trades.length : 0
 
     const averageProfit = winningTrades.length > 0
@@ -351,6 +353,7 @@ class BacktestEngine {
       totalTrades: trades.length,
       winningTrades: winningTrades.length,
       losingTrades: losingTrades.length,
+      neutralTrades: neutralTrades.length,
       averageProfit,
       averageLoss
     }

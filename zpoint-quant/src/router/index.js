@@ -44,6 +44,16 @@ const routes = [
         component: () => import('../views/Risk.vue')
       },
       {
+        path: 'traffic-demo',
+        name: 'TrafficDemo',
+        component: () => import('../views/TrafficLightDemo.vue')
+      },
+      {
+        path: 'scan-preview',
+        name: 'ScanResultsPreview',
+        component: () => import('../views/ScanResultsPreview.vue')
+      },
+      {
         path: 'settings',
         name: 'Settings',
         component: () => import('../views/Settings.vue')

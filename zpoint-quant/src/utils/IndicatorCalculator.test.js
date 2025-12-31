@@ -117,6 +117,18 @@ describe('IndicatorCalculator', () => {
       const prices = [10, 11, -5, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
       expect(() => calculator.calculateRSI(prices, 14)).toThrow('non-negative')
     })
+
+    test('should filter NaN/Infinity and compute RSI on cleaned data', () => {
+      const raw = [100, NaN, 102, Infinity, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115]
+      const cleaned = raw.filter(p => typeof p === 'number' && Number.isFinite(p))
+      // sanity check
+      expect(cleaned.length).toBeGreaterThanOrEqual(15)
+
+      const rsiRaw = calculator.calculateRSI(raw, 14)
+      const rsiClean = calculator.calculateRSI(cleaned, 14)
+
+      expect(rsiRaw).toEqual(rsiClean)
+    })
   })
 
   describe('calculateMACD - MACD指标', () => {

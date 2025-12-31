@@ -65,18 +65,28 @@ class IndicatorCalculator {
       throw new Error(`Insufficient data: need at least ${period + 1} data points, got ${prices.length}`)
     }
 
-    // 验证所有价格都是有效数字
-    if (!prices.every(p => typeof p === 'number' && !isNaN(p) && p >= 0)) {
+    // 清洗输入：移除 NaN/Infinity 等非有限值，保留有限数值
+    const sanitized = prices.filter(p => typeof p === 'number' && Number.isFinite(p))
+
+    // 若存在负值，则视为非法输入
+    if (sanitized.some(p => p < 0)) {
       throw new Error('All prices must be valid non-negative numbers')
     }
+
+    if (sanitized.length < period + 1) {
+      throw new Error(`Insufficient data after filtering invalid values: need at least ${period + 1} valid data points, got ${sanitized.length}`)
+    }
+
+    // 使用清洗后的价格数组进行计算
+    const cleanPrices = sanitized
 
     const result = []
     const gains = []
     const losses = []
 
-    // 计算价格变化
-    for (let i = 1; i < prices.length; i++) {
-      const change = prices[i] - prices[i - 1]
+    // 计算价格变化（基于清洗后的数组）
+    for (let i = 1; i < cleanPrices.length; i++) {
+      const change = cleanPrices[i] - cleanPrices[i - 1]
       gains.push(change > 0 ? change : 0)
       losses.push(change < 0 ? -change : 0)
     }
@@ -91,9 +101,16 @@ class IndicatorCalculator {
     avgGain /= period
     avgLoss /= period
 
-    // 计算第一个RSI
-    let rs = avgLoss === 0 ? 100 : avgGain / avgLoss
-    let rsi = 100 - (100 / (1 + rs))
+    // 计算第一个RSI（处理 avgGain 与 avgLoss 都为0的特殊情况）
+    let rsi
+    if (avgGain === 0 && avgLoss === 0) {
+      rsi = 50
+    } else if (avgLoss === 0) {
+      rsi = 100
+    } else {
+      const rs = avgGain / avgLoss
+      rsi = 100 - (100 / (1 + rs))
+    }
     result.push(rsi)
 
     // 使用指数移动平均计算后续RSI值
@@ -101,8 +118,15 @@ class IndicatorCalculator {
       avgGain = (avgGain * (period - 1) + gains[i]) / period
       avgLoss = (avgLoss * (period - 1) + losses[i]) / period
 
-      rs = avgLoss === 0 ? 100 : avgGain / avgLoss
-      rsi = 100 - (100 / (1 + rs))
+      if (avgGain === 0 && avgLoss === 0) {
+        rsi = 50
+      } else if (avgLoss === 0) {
+        rsi = 100
+      } else {
+        const rs = avgGain / avgLoss
+        rsi = 100 - (100 / (1 + rs))
+      }
+
       result.push(rsi)
     }
 

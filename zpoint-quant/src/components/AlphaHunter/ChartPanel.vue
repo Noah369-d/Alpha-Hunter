@@ -24,7 +24,7 @@ export default {
     }
   },
   methods: {
-    _drawPlaceholder(c){ if (c && c.getContext) { const ctx = c.getContext('2d'); ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0, 0, c.width || 600, c.height || 240) } }
+    _drawPlaceholder(c){ if (c && c.getContext) { const ctx = c.getContext('2d'); if (ctx) { ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0, 0, c.width || 600, c.height || 240) } } }
   }
 }
 </script>

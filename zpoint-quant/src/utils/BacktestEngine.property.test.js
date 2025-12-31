@@ -318,7 +318,9 @@ describe('BacktestEngine - Property-Based Tests', () => {
           (trades, initialCapital) => {
             const metrics = engine.calculateMetrics(trades, initialCapital)
 
-            return metrics.totalTrades === metrics.winningTrades + metrics.losingTrades
+            // 允许出现零利润（平手）交易，确保总交易数等于赢+输+平手
+            const neutralTrades = trades.filter(t => typeof t.profit === 'number' && Math.abs(t.profit) <= 1e-8).length
+            return metrics.totalTrades === metrics.winningTrades + metrics.losingTrades + neutralTrades
           }
         ),
         { numRuns: 100 }

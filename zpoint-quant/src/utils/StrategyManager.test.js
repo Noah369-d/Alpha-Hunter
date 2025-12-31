@@ -459,19 +459,21 @@ describe('StrategyManager', () => {
     })
 
     test('should handle LocalStorage errors gracefully', async () => {
-      // 模拟LocalStorage错误
+      // 模拟LocalStorage错误并确保最终恢复
       const originalSetItem = localStorage.setItem
-      localStorage.setItem = () => {
-        throw new Error('Storage full')
+      try {
+        localStorage.setItem = () => {
+          throw new Error('Storage full')
+        }
+
+        const code = 'function onBar() { return null }'
+        const strategy = manager.createStrategy('Test', code)
+
+        await expect(manager.saveStrategy(strategy)).rejects.toThrow('Failed to save strategies')
+      } finally {
+        // 恢复
+        localStorage.setItem = originalSetItem
       }
-      
-      const code = 'function onBar() { return null }'
-      const strategy = manager.createStrategy('Test', code)
-      
-      await expect(manager.saveStrategy(strategy)).rejects.toThrow('Failed to save strategies')
-      
-      // 恢复
-      localStorage.setItem = originalSetItem
     })
   })
 })

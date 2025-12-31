@@ -247,6 +247,22 @@ describe('BacktestEngine', () => {
       expect(metrics.sharpeRatio).toBe(0)
     })
 
+    test('should treat tiny near-zero profits as neutral trades', () => {
+      const trades = [
+        { profit: 1e-45, entryTime: new Date(), exitTime: new Date() },
+        { profit: -1e-45, entryTime: new Date(), exitTime: new Date() },
+        { profit: 1.0, entryTime: new Date(), exitTime: new Date() }
+      ]
+
+      const metrics = engine.calculateMetrics(trades, 10000)
+
+      expect(metrics.totalTrades).toBe(3)
+      expect(metrics.winningTrades).toBe(1)
+      expect(metrics.losingTrades).toBe(0)
+      expect(metrics.neutralTrades).toBe(2)
+      expect(metrics.winRate).toBeCloseTo(1 / 3)
+    })
+
     test('should calculate max drawdown', () => {
       const trades = [
         { profit: 1000, entryTime: new Date(), exitTime: new Date() },

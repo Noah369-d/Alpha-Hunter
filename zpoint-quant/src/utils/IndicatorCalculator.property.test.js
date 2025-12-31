@@ -120,6 +120,9 @@ describe('IndicatorCalculator - Property-Based Tests', () => {
             // 生成下跌趋势的价格
             const downPrices = Array.from({ length: 30 }, (_, i) => basePrice - i * trend)
 
+            // 如果价格序列包含负值则跳过（无效样本）
+            if (downPrices.some(p => p < 0) || upPrices.some(p => p < 0)) return true
+
             const upRSI = calculator.calculateRSI(upPrices, 14)
             const downRSI = calculator.calculateRSI(downPrices, 14)
 
